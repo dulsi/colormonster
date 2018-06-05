@@ -15,6 +15,7 @@
 TinyScreen display = TinyScreen(TinyScreenPlus);
 
 #define STATE_PAINT 0
+#define STATE_PAINTZOOM 1
 
 #define BUTTON_COOLDOWN 5
 #define JOYSTICK_COOLDOWN 3
@@ -67,6 +68,8 @@ class Painter
   private:
     uint8_t px;
     uint8_t py;
+    uint8_t zoomx;
+    uint8_t zoomy;
     uint8_t tool;
     uint8_t color1;
     uint8_t color2;
@@ -112,14 +115,26 @@ void Painter::update()
     if ((btn & TAButton1) && (px < 48))
     {
       buttonCoolDown = BUTTON_COOLDOWN;
+      uint8_t dx;
+      uint8_t dy;
+      if (STATE_PAINT == state)
+      {
+        dx = px;
+        dy = py;
+      }
+      else
+      {
+        dx = px / 2 + zoomx;
+        dy = py / 2 + zoomy;
+      }
       if (tool == TOOL_DRAW)
       {
-        active->img[py * 48 * 2 + px * 2] = color1;
-        active->img[py * 48 * 2 + px * 2 + 1] = color2;
+        active->img[dy * 48 * 2 + dx * 2] = color1;
+        active->img[dy * 48 * 2 + dx * 2 + 1] = color2;
       }
       else if (tool == TOOL_FLOOD)
       {
-        unsigned char fillSpot = active->baseImg[py * 48 + px];
+        unsigned char fillSpot = active->baseImg[dy * 48 + dx];
         if (fillSpot != 0)
         {
           for (int i = 0; i < 64*48; i++)
@@ -139,10 +154,37 @@ void Painter::update()
       color2 = _image_paint_data[(py * 48 + (px - 48)) * 2 + 1];
       buttonCoolDown = BUTTON_COOLDOWN;
     }
-    if (btn & TAButton2)
+    else if ((btn & TAButton1) && (px > 51) && (px < 68) && (py > 1) && (py < 18))
     {
-      if (++tool >= 2)
-        tool = TOOL_DRAW;
+      tool = TOOL_DRAW;
+      buttonCoolDown = BUTTON_COOLDOWN;
+    }
+    else if ((btn & TAButton1) && (px > 75) && (px < 92) && (py > 1) && (py < 18))
+    {
+      tool = TOOL_FLOOD;
+      buttonCoolDown = BUTTON_COOLDOWN;
+    }
+    if ((btn & TAButton2) && (px < 48))
+    {
+      if (state == STATE_PAINT)
+      {
+        state = STATE_PAINTZOOM;
+        printf("%d %d -p\n", px, py);
+        printf("%d %d\n", zoomx, zoomy);
+        zoomx = px - 12;
+        if (px < 12)
+          zoomx = 0;
+        else if (zoomx > 24)
+          zoomx = 24;
+        zoomy = py - 16;
+        if (py < 16)
+          zoomy = 0;
+        else if (zoomy > 32)
+          zoomy = 32;
+        printf("%d %d\n", zoomx, zoomy);
+      }
+      else
+        state = STATE_PAINT;
       buttonCoolDown = BUTTON_COOLDOWN;
     }
   }
@@ -157,23 +199,20 @@ void Painter::draw()
 
   for(int lines = 0; lines < 64; ++lines)
   {
-    memcpy(lineBuffer, active->img + (lines * 48 * 2), 48 * 2);
-    memcpy(lineBuffer + 48 * 2, _image_paint_data + lines * 48 * 2,48*2);
-    if ((lines >= py) && (lines < py + 8))
+    if (state == STATE_PAINT)
+      memcpy(lineBuffer, active->img + (lines * 48 * 2), 48 * 2);
+    else
     {
-      for (int x = 0; x < 8; x++)
+      int curLine = zoomy + lines / 2;
+      for (int i = 0; i < 24; ++i)
       {
-        if (x + px >= 96)
-          break;
-        unsigned char pointerCol1 = _image_pointer_data[(x + (lines - py) * 8) * 2];
-        unsigned char pointerCol2 = _image_pointer_data[(x + (lines - py) * 8) * 2 + 1];
-        if ((pointerCol1 != 0) || (pointerCol2 != 31))
-        {
-          lineBuffer[(px + x) * 2] = pointerCol1;
-          lineBuffer[(px + x) * 2 + 1] = pointerCol2;
-        }
+        lineBuffer[i * 2 * 2] = active->img[curLine * 48 * 2 + (zoomx + i) * 2];
+        lineBuffer[i * 2 * 2 + 1] = active->img[curLine * 48 * 2 + (zoomx + i) * 2 + 1];
+        lineBuffer[i * 2 * 2 + 2] = active->img[curLine * 48 * 2 + (zoomx + i) * 2];
+        lineBuffer[i * 2 * 2 + 3] = active->img[curLine * 48 * 2 + (zoomx + i) * 2 + 1];
       }
     }
+    memcpy(lineBuffer + 48 * 2, _image_paint_data + lines * 48 * 2,48*2);
     if ((lines == 1) || (lines == 18))
     {
       if (tool == TOOL_DRAW)
@@ -210,6 +249,21 @@ void Painter::draw()
         lineBuffer[(48 + 44) * 2 + 1] = color2;
       }
     }
+    if ((lines >= py) && (lines < py + 8))
+    {
+      for (int x = 0; x < 8; x++)
+      {
+        if (x + px >= 96)
+          break;
+        unsigned char pointerCol1 = _image_pointer_data[(x + (lines - py) * 8) * 2];
+        unsigned char pointerCol2 = _image_pointer_data[(x + (lines - py) * 8) * 2 + 1];
+        if ((pointerCol1 != 0) || (pointerCol2 != 31))
+        {
+          lineBuffer[(px + x) * 2] = pointerCol1;
+          lineBuffer[(px + x) * 2 + 1] = pointerCol2;
+        }
+      }
+    }
     display.writeBuffer(lineBuffer,96 * 2);
   }
   display.endTransfer();
@@ -239,7 +293,7 @@ void setup()
 void loop()
 {
   // put your main code here, to run repeatedly:
-  if (state == STATE_PAINT)
+  if ((state == STATE_PAINT) || (state == STATE_PAINTZOOM))
   {
     paint.update();
     paint.draw();
