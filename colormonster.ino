@@ -169,8 +169,6 @@ void Painter::update()
       if (state == STATE_PAINT)
       {
         state = STATE_PAINTZOOM;
-        printf("%d %d -p\n", px, py);
-        printf("%d %d\n", zoomx, zoomy);
         zoomx = px - 12;
         if (px < 12)
           zoomx = 0;
@@ -181,7 +179,6 @@ void Painter::update()
           zoomy = 0;
         else if (zoomy > 32)
           zoomy = 32;
-        printf("%d %d\n", zoomx, zoomy);
       }
       else
         state = STATE_PAINT;
