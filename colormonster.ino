@@ -22,11 +22,12 @@ SdFile dataFile;
 #define STATE_PAINTZOOM 1
 
 #define BUTTON_COOLDOWN 5
-#define JOYSTICK_COOLDOWN 3
+#define JOYSTICK_COOLDOWNSTART 4
 
 int state = 0;
 int buttonCoolDown = 0;
 int joystickCoolDown = 0;
+int joystickCoolDownStart = JOYSTICK_COOLDOWNSTART;
 
 class ColorMonster
 {
@@ -90,25 +91,33 @@ void Painter::update()
   }
   else
   {
+    if (joyDir == 0)
+      joystickCoolDownStart = JOYSTICK_COOLDOWNSTART;
+    else
+    {
+      if (joystickCoolDownStart > 0)
+        joystickCoolDownStart--;
+      buttonCoolDown = 0;
+    }
     if ((joyDir & TAJoystickUp) && (py > 0))
     {
       py--;
-      joystickCoolDown = JOYSTICK_COOLDOWN;
+      joystickCoolDown = joystickCoolDownStart;
     }
     else if ((joyDir & TAJoystickDown) && (py < 63))
     {
       py++;
-      joystickCoolDown = JOYSTICK_COOLDOWN;
+      joystickCoolDown = joystickCoolDownStart;
     }
     if ((joyDir & TAJoystickLeft) && (px > 0))
     {
       px--;
-      joystickCoolDown = JOYSTICK_COOLDOWN;
+      joystickCoolDown = joystickCoolDownStart;
     }
     else if ((joyDir & TAJoystickRight) && (px < 95))
     {
       px++;
-      joystickCoolDown = JOYSTICK_COOLDOWN;
+      joystickCoolDown = joystickCoolDownStart;
     }
   }
   if (buttonCoolDown > 0)
