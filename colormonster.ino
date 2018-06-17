@@ -4,6 +4,7 @@
 #include <Wire.h>
 #include "TinyConfig.h"
 #include "cateye.h"
+#include "tileset.h"
 #include "ui.h"
 
 #ifdef TINYARCADE_CONFIG
@@ -20,6 +21,7 @@ SdFile dataFile;
 
 #define STATE_PAINT 0
 #define STATE_PAINTZOOM 1
+#define STATE_WORLD 2
 
 #define BUTTON_COOLDOWN 5
 #define JOYSTICK_COOLDOWNSTART 4
@@ -60,6 +62,46 @@ void ColorMonster::initImage(const unsigned char *bi)
 
 ColorMonster party[1];
 ColorMonster *active = &party[0];
+
+class Trainer
+{
+  public:
+    Trainer() : location(0), x(136), y(96) {}
+
+    int location;
+    int x, y;
+};
+
+Trainer pc;
+
+class Area
+{
+  public:
+    Area(uint8_t x, uint8_t y, const uint8_t *d) : xSize(x), ySize(y), data(d) {}
+
+    uint8_t xSize, ySize;
+    const uint8_t *data;
+};
+
+const uint8_t startTownMap[] = {
+  0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+  0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+  0, 0, 0,14, 0, 0, 0, 6, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+  0, 0, 0,13, 5, 5, 5,13, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+  0, 0, 0,13,12, 4,12,13, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+  0, 0, 0,13, 4, 1, 4,13, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+  0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+  0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+  0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,10, 0, 0,
+  0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 3, 3, 3, 3, 0,10, 0, 0, 0,
+  0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,11,11,11,11, 0,10, 0, 0, 0,
+  0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2, 2, 1, 2, 0, 0, 0, 0, 0,
+  0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 9, 0, 0, 0, 0, 0, 0, 0, 0,
+  0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 9, 0, 0, 0, 0, 0, 0, 0, 0,
+  0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 9, 0, 0, 0, 0, 0, 0, 0,
+  0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+};
+const Area startTown(24, 16, startTownMap);
 
 #define TOOL_DRAW 0
 #define TOOL_FLOOD 1
@@ -192,6 +234,7 @@ void Painter::update()
           dataFile.sync();
           dataFile.close();
           active->saved = true;
+          state = STATE_WORLD;
         }
       }
       buttonCoolDown = BUTTON_COOLDOWN;
@@ -300,6 +343,142 @@ void Painter::draw()
 
 Painter paint;
 
+class World
+{
+  public:
+    void update();
+    void draw();
+    uint8_t getTile(int x, int y);
+    const uint8_t *getTileData(int tile, int y);
+};
+
+void World::update()
+{
+  uint8_t btn = checkButton(TAButton1 | TAButton2);
+  uint8_t joyDir = checkJoystick(TAJoystickUp | TAJoystickDown | TAJoystickLeft | TAJoystickRight);
+  if (joystickCoolDown > 0)
+  {
+    joystickCoolDown--;
+  }
+  else
+  {
+    if ((joyDir & TAJoystickUp) && (pc.y > 0))
+    {
+      pc.y--;
+    }
+    else if ((joyDir & TAJoystickDown) && (pc.y < startTown.ySize * 8))
+    {
+      pc.y++;
+    }
+    if ((joyDir & TAJoystickLeft) && (pc.x > 0))
+    {
+      pc.x--;
+    }
+    else if ((joyDir & TAJoystickRight) && (pc.x < startTown.xSize * 8))
+    {
+      pc.x++;
+    }
+  }
+  if (buttonCoolDown > 0)
+  {
+    buttonCoolDown--;
+  }
+  else
+  {
+  }
+}
+
+void World::draw()
+{
+  int startX(0), startY(0);
+
+  startX = pc.x - 46;
+  startY = pc.y - 30;
+  display.goTo(0,0);
+  display.startData();
+
+  uint8_t lineBuffer[96 * 2];
+
+  for(int lines = 0; lines < 64; ++lines)
+  {
+    int currentY = startY + lines;
+    if ((currentY < 0) || (currentY >= (startTown.ySize * 8)))
+    {
+      memset(lineBuffer, 0, 96 * 2);
+    }
+    else
+    {
+      int x = 0;
+      if (startX < 0)
+      {
+        x = startX * -1;
+        memset(lineBuffer, 0, x * 2);
+      }
+      int currentTile = getTile(startX + x, currentY);
+      if (x == 0)
+      {
+        int init = (x + startX) % 8;
+        if (init != 0)
+        {
+          if (currentTile == 0)
+            memset(lineBuffer + x * 2, 255, (8 - init) * 2);
+          else
+            memcpy(lineBuffer + x * 2, getTileData(currentTile, currentY % 8) + (init * 2), (8 - init) * 2);
+          x += 8 - init;
+        }
+      }
+      while (x <= 88)
+      {
+        if (startX + x > ((startTown.xSize - 1) * 8))
+        {
+          memset(lineBuffer + x * 2, 0, (96 - x) * 2);
+          x = 96;
+          break;
+        }
+        currentTile = getTile(startX + x, currentY);
+        if (currentTile == 0)
+          memset(lineBuffer + x * 2, 255, 8 * 2);
+        else
+          memcpy(lineBuffer + x * 2, getTileData(currentTile, currentY % 8), 8 * 2);
+        x += 8;
+      }
+      if (x != 96)
+      {
+        int init = 96 - x;
+        if (startX + x > ((startTown.xSize - 1) * 8))
+        {
+          memset(lineBuffer + x * 2, 0, init * 2);
+          x = 96;
+        }
+        else
+        {
+          currentTile = getTile(startX + x, currentY);
+          if (currentTile == 0)
+            memset(lineBuffer + x * 2, 255, init * 2);
+          else
+            memcpy(lineBuffer + x * 2, getTileData(currentTile, currentY % 8), init * 2);
+        }
+      }
+    }
+    display.writeBuffer(lineBuffer,96 * 2);
+  }
+  display.endTransfer();
+}
+
+uint8_t World::getTile(int x, int y)
+{
+  return startTown.data[x / 8 + ((y / 8) * startTown.xSize)];
+}
+
+const uint8_t *World::getTileData(int tile, int y)
+{
+  y += ((tile - 1) / 8) * 8;
+  int x = ((tile - 1) % 8) * 8;
+  return _image_tileset_data + (x + y * (8 * 8 )) * 2;
+}
+
+World world;
+
 unsigned long lastTime;
 
 void setup()
@@ -343,6 +522,11 @@ void loop()
   {
     paint.update();
     paint.draw();
+  }
+  else if (state == STATE_WORLD)
+  {
+    world.update();
+    world.draw();
   }
   unsigned long oldTime = lastTime;
   lastTime = millis();
