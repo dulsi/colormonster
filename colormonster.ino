@@ -66,9 +66,10 @@ ColorMonster *active = &party[0];
 class Trainer
 {
   public:
-    Trainer() : location(0), x(136), y(96) {}
+    Trainer() : location(0), icon(28), x(136), y(96) {}
 
     int location;
+    uint8_t icon;
     int x, y;
 };
 
@@ -457,6 +458,18 @@ void World::draw()
             memset(lineBuffer + x * 2, 255, init * 2);
           else
             memcpy(lineBuffer + x * 2, getTileData(currentTile, currentY % 8), init * 2);
+        }
+      }
+      if ((currentY >= pc.y) && (currentY < pc.y + 8))
+      {
+        const uint8_t *data = getTileData(pc.icon, currentY - pc.y);
+        for (int i = 0; i < 8; i++)
+        {
+          if ((data[i * 2] != 255) || (data[i * 2 + 1] != 255))
+          {
+            lineBuffer[(46 + i) * 2] = data[i * 2];
+            lineBuffer[(46 + i) * 2 + 1] = data[i * 2 + 1];
+          }
         }
       }
     }
