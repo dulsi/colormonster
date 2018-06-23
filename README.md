@@ -7,8 +7,8 @@ Battle other trainers.
 # Building
 
 Color Monster is montser training game designed for the TinyArcade platform.
-Load the viobyte.ino in the Arduino IDE. Install the TinyScreen library and you
-should be able to build it for your device.
+Load the viobyte.ino in the Arduino IDE. Install the TinyScreen and SdFat
+library and you should be able to build it for your device.
 
 If you want to play it on a Linux computer, you can use the tinyscreensim
 program (https://github.com/dulsi/tinyscreensim). Install glfw3 library.

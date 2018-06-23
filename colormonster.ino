@@ -226,7 +226,7 @@ void Painter::update()
     {
       if (!active->saved)
       {
-        if (!dataFile.open("colormn1.dat", O_WRITE | O_CREAT | O_TRUNC))
+        if (!dataFile.open("colormonster/colormn1.dat", O_WRITE | O_CREAT | O_TRUNC))
         {
         }
         else
@@ -513,9 +513,9 @@ void setup()
     while(1);
   }
   lastTime = millis();
-  if (sd.exists("colormn1.dat"))
+  if (sd.exists("colormonster/colormn1.dat"))
   {
-    if (!dataFile.open("colormn1.dat", O_READ))
+    if (!dataFile.open("colormonster/colormn1.dat", O_READ))
     {
     }
     else
