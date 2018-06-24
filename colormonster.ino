@@ -5,6 +5,7 @@
 #include "TinyConfig.h"
 #include "cateye.h"
 #include "tileset.h"
+#include "font.h"
 #include "ui.h"
 
 #ifdef TINYARCADE_CONFIG
@@ -22,6 +23,7 @@ SdFile dataFile;
 #define STATE_PAINT 0
 #define STATE_PAINTZOOM 1
 #define STATE_WORLD 2
+#define STATE_BATTLECHOICE 3
 
 #define BUTTON_COOLDOWN 5
 #define JOYSTICK_COOLDOWNSTART 4
@@ -31,6 +33,19 @@ int buttonCoolDown = 0;
 int joystickCoolDown = 0;
 int joystickCoolDownStart = JOYSTICK_COOLDOWNSTART;
 
+#define PART_NONE 255
+
+class ColorMonsterPart
+{
+  public:
+    ColorMonsterPart() : part(PART_NONE) {}
+
+    uint8_t part;
+    uint8_t color;
+    uint8_t strength;
+    uint8_t health;
+};
+
 class ColorMonster
 {
   public:
@@ -39,6 +54,7 @@ class ColorMonster
 
     unsigned char img[64*48*2];
     const unsigned char *baseImg;
+    ColorMonsterPart part[5];
     bool saved;
 };
 
@@ -62,6 +78,8 @@ void ColorMonster::initImage(const unsigned char *bi)
 
 ColorMonster party[1];
 ColorMonster *active = &party[0];
+ColorMonster opponent[1];
+ColorMonster *activeOpponent = &opponent[0];
 
 class Trainer
 {
@@ -351,6 +369,7 @@ class World
     void draw();
     uint8_t getTile(int x, int y);
     const uint8_t *getTileData(int tile, int y);
+    const uint8_t *getFontData(char c, int y);
 };
 
 void World::update()
@@ -490,7 +509,112 @@ const uint8_t *World::getTileData(int tile, int y)
   return _image_tileset_data + (x + y * (8 * 8 )) * 2;
 }
 
+const uint8_t *World::getFontData(char c, int y)
+{
+  y += ((c - 32) / 18) * 7;
+  int x = ((c - 32) % 18) * 6;
+  return _image_charmap_oldschool_white_data + (x + y * (18 * 6 )) * 2;
+}
+
 World world;
+
+class Battle
+{
+  public:
+    Battle() : action(0) {}
+    void update();
+    void draw();
+
+    uint8_t action;
+    static const char *baseOption[4];
+    static uint8_t optionRect[4][4];
+};
+
+
+void Battle::update()
+{
+  uint8_t btn = checkButton(TAButton1 | TAButton2);
+  uint8_t joyDir = checkJoystick(TAJoystickUp | TAJoystickDown | TAJoystickLeft | TAJoystickRight);
+  if (joystickCoolDown > 0)
+  {
+    joystickCoolDown--;
+  }
+  else
+  {
+    if (joyDir & TAJoystickUp)
+    {
+      if (action & 0x01)
+        action -= 1;
+      joystickCoolDown = joystickCoolDownStart;
+    }
+    if (joyDir & TAJoystickDown)
+    {
+      if ((action & 0x01) == 0)
+        action += 1;
+      joystickCoolDown = joystickCoolDownStart;
+    }
+    if (joyDir & TAJoystickLeft)
+    {
+      if (action & 0x02)
+        action -= 2;
+      joystickCoolDown = joystickCoolDownStart;
+    }
+    if (joyDir & TAJoystickRight)
+    {
+      if ((action & 0x02) == 0)
+        action += 2;
+      joystickCoolDown = joystickCoolDownStart;
+    }
+  }
+}
+
+void Battle::draw()
+{
+  display.goTo(0,0);
+  display.startData();
+
+  uint8_t lineBuffer[96 * 2];
+
+  for(int lines = 0; lines < 64; ++lines)
+  {
+    memcpy(lineBuffer, active->img + (lines * 48 * 2), 48 * 2);
+    memcpy(lineBuffer + (48 *2), activeOpponent->img + (lines * 48 * 2), 48 * 2);
+    if (state == STATE_BATTLECHOICE)
+    {
+      for (int rect = 0; rect < 4; rect++)
+      {
+        if (rect == (action & 0xFF))
+        {
+          if ((lines == optionRect[rect][1]) || (lines == optionRect[rect][3]))
+          {
+            memset(lineBuffer + (optionRect[rect][0] * 2), 0xFF, ((optionRect[rect][2] - optionRect[rect][0] + 1) * 2));
+          }
+          if ((lines > optionRect[rect][1]) && (lines < optionRect[rect][3]))
+          {
+            memset(lineBuffer + (optionRect[rect][0] * 2), 0xFF, 2);
+            memset(lineBuffer + (optionRect[rect][2] * 2), 0xFF, 2);
+          }
+        }
+        if ((lines > optionRect[rect][1]) && (lines < optionRect[rect][3]))
+        {
+          memset(lineBuffer + ((optionRect[rect][0] + 1) * 2), 0x00, ((optionRect[rect][2] - optionRect[rect][0] - 1) * 2));
+          for (int i = 0; baseOption[rect][i] != 0; i++)
+          {
+            const uint8_t *fontData = world.getFontData(baseOption[rect][i], lines - optionRect[rect][1] - 1);
+            memcpy(lineBuffer + ((optionRect[rect][0] + 1 + (i * 6)) * 2), fontData, 6 * 2);
+          }
+        }
+      }
+    }
+    display.writeBuffer(lineBuffer,96 * 2);
+  }
+  display.endTransfer();
+}
+
+const char *Battle::baseOption[4] = { "Attack", "Item", "Swap", "Run" };
+uint8_t Battle::optionRect[4][4] = { {0, 46, 47, 54}, {0, 55, 47, 63}, {48, 46, 95, 54}, {48, 55, 95, 63}, };
+
+Battle battle;
 
 unsigned long lastTime;
 
@@ -508,6 +632,7 @@ void setup()
 #endif
   SerialUSB.begin(9600);
   active->initImage(_image_cateye_data);
+  activeOpponent->initImage(_image_cateye_data);
   if (!sd.begin(10,SPI_FULL_SPEED)) {
     SerialUSB.println("Card failed");
     while(1);
@@ -541,6 +666,11 @@ void loop()
     world.update();
     world.draw();
   }
+  else if (state == STATE_BATTLECHOICE)
+  {
+    battle.update();
+    battle.draw();
+  }
   unsigned long oldTime = lastTime;
   lastTime = millis();
   if ((lastTime > oldTime) && (lastTime - oldTime < 70))
@@ -548,3 +678,4 @@ void loop()
     delay(70 - (lastTime - oldTime));
   }
 }
+
