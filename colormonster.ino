@@ -96,10 +96,11 @@ Trainer pc;
 class Area
 {
   public:
-    Area(uint8_t x, uint8_t y, const uint8_t *d) : xSize(x), ySize(y), data(d) {}
+    Area(uint8_t x, uint8_t y, const uint8_t *d, const uint8_t *c) : xSize(x), ySize(y), data(d), collision(c) {}
 
     uint8_t xSize, ySize;
     const uint8_t *data;
+    const uint8_t *collision;
 };
 
 const uint8_t startTownMap[] = {
@@ -120,7 +121,25 @@ const uint8_t startTownMap[] = {
   0, 0,18,17,15,15, 8, 0, 0, 0, 0, 0, 0, 0, 0, 0, 9, 0, 0, 0, 0, 0, 0, 0,
   0, 0,18,17,17,17,19, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
 };
-const Area startTown(24, 16, startTownMap);
+const uint8_t startTownCollision[] = {
+  0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+  0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 1,
+  0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 1,
+  0, 0, 0, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 1,
+  0, 0, 0, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 1,
+  0, 0, 0, 1, 1, 0, 1, 1, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 1,
+  0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 0, 1, 1, 1, 1,
+  1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+  1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0,
+  0, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 0, 1, 0, 0, 0,
+  0, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 0, 1, 0, 0, 0,
+  0, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 0, 1, 0, 0, 0, 0, 0,
+  0, 0, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+  0, 0, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+  0, 0, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+  0, 0, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+};
+const Area startTown(24, 16, startTownMap, startTownCollision);
 
 #define TOOL_DRAW 0
 #define TOOL_FLOOD 1
@@ -367,6 +386,7 @@ class World
   public:
     void update();
     void draw();
+    uint8_t getCollision(int xWhere, int yWhere);
     uint8_t getTile(int x, int y);
     const uint8_t *getTileData(int tile, int y);
     const uint8_t *getFontData(char c, int y);
@@ -384,19 +404,135 @@ void World::update()
   {
     if ((joyDir & TAJoystickUp) && (pc.y > 0))
     {
-      pc.y--;
+      if ((pc.y % 8) == 0)
+      {
+        int yWhere = pc.y / 8;
+        int xWhere = pc.x / 8;
+        int xMod = pc.x % 8;
+        bool col1 = getCollision(xWhere, yWhere - 1);
+        if (xMod == 0)
+        {
+          if (col1 == 0)
+            pc.y--;
+        }
+        else
+        {
+          bool col2 = getCollision(xWhere + 1, yWhere - 1);
+          if ((col1 == 0) && (col2 == 0))
+            pc.y--;
+          else if ((col1 == 0) && (col2 != 0) && (xMod == 1))
+          {
+            pc.y--;
+            pc.x--;
+          }
+          else if ((col1 != 0) && (col2 == 0) && (xMod == 7))
+          {
+            pc.y--;
+            pc.x++;
+          }
+        }
+      }
+      else
+        pc.y--;
     }
-    else if ((joyDir & TAJoystickDown) && (pc.y < startTown.ySize * 8))
+    else if ((joyDir & TAJoystickDown) && (pc.y < (startTown.ySize - 1) * 8))
     {
-      pc.y++;
+      if ((pc.y % 8) == 0)
+      {
+        int yWhere = pc.y / 8;
+        int xWhere = pc.x / 8;
+        int xMod = pc.x % 8;
+        bool col1 = getCollision(xWhere, yWhere + 1);
+        if (xMod == 0)
+        {
+          if (col1 == 0)
+            pc.y++;
+        }
+        else
+        {
+          bool col2 = getCollision(xWhere + 1, yWhere + 1);
+          if ((col1 == 0) && (col2 == 0))
+            pc.y++;
+          else if ((col1 == 0) && (col2 != 0) && (xMod == 1))
+          {
+            pc.y++;
+            pc.x--;
+          }
+          else if ((col1 != 0) && (col2 == 0) && (xMod == 7))
+          {
+            pc.y++;
+            pc.x++;
+          }
+        }
+      }
+      else
+        pc.y++;
     }
     if ((joyDir & TAJoystickLeft) && (pc.x > 0))
     {
-      pc.x--;
+      if ((pc.x % 8) == 0)
+      {
+        int yWhere = pc.y / 8;
+        int xWhere = pc.x / 8;
+        int yMod = pc.y % 8;
+        bool col1 = getCollision(xWhere - 1, yWhere);
+        if (yMod == 0)
+        {
+          if (col1 == 0)
+            pc.x--;
+        }
+        else
+        {
+          bool col2 = getCollision(xWhere - 1, yWhere + 1);
+          if ((col1 == 0) && (col2 == 0))
+            pc.x--;
+          else if ((col1 == 0) && (col2 != 0) && (yMod == 1))
+          {
+            pc.y--;
+            pc.x--;
+          }
+          else if ((col1 != 0) && (col2 == 0) && (yMod == 7))
+          {
+            pc.y++;
+            pc.x--;
+          }
+        }
+      }
+      else
+        pc.x--;
     }
-    else if ((joyDir & TAJoystickRight) && (pc.x < startTown.xSize * 8))
+    else if ((joyDir & TAJoystickRight) && (pc.x < (startTown.xSize - 1) * 8))
     {
-      pc.x++;
+      if ((pc.x % 8) == 0)
+      {
+        int yWhere = pc.y / 8;
+        int xWhere = pc.x / 8;
+        int yMod = pc.y % 8;
+        bool col1 = getCollision(xWhere + 1, yWhere);
+        if (yMod == 0)
+        {
+          if (col1 == 0)
+            pc.x++;
+        }
+        else
+        {
+          bool col2 = getCollision(xWhere + 1, yWhere + 1);
+          if ((col1 == 0) && (col2 == 0))
+            pc.x++;
+          else if ((col1 == 0) && (col2 != 0) && (yMod == 1))
+          {
+            pc.y--;
+            pc.x++;
+          }
+          else if ((col1 != 0) && (col2 == 0) && (yMod == 7))
+          {
+            pc.y++;
+            pc.x++;
+          }
+        }
+      }
+      else
+        pc.x++;
     }
   }
   if (buttonCoolDown > 0)
@@ -495,6 +631,11 @@ void World::draw()
     display.writeBuffer(lineBuffer,96 * 2);
   }
   display.endTransfer();
+}
+
+uint8_t World::getCollision(int xWhere, int yWhere)
+{
+  return startTown.collision[xWhere + (yWhere * startTown.xSize)];
 }
 
 uint8_t World::getTile(int x, int y)
