@@ -392,6 +392,145 @@ class World
     const uint8_t *getFontData(char c, int y);
 };
 
+World world;
+
+class Dialog
+{
+  public:
+    Dialog(const uint8_t *r) : rect(r) {  }
+
+    uint8_t process();
+    void draw(int line, uint8_t lineBuffer[96 * 2]);
+    void setOptions(uint8_t col, uint8_t c, const char **o);
+
+  private:
+    const uint8_t *rect;
+    uint8_t top;
+    uint8_t where;
+    uint8_t column;
+    uint8_t count;
+    const char **option;
+};
+
+uint8_t Dialog::process()
+{
+  uint8_t btn = checkButton(TAButton1 | TAButton2);
+  uint8_t joyDir = checkJoystick(TAJoystickUp | TAJoystickDown | TAJoystickLeft | TAJoystickRight);
+  if (joystickCoolDown > 0)
+  {
+    joystickCoolDown--;
+  }
+  else
+  {
+    int rows = count / column;
+    int xWhere = where % column;
+    int yWhere = where / column;
+    if (joyDir & TAJoystickUp)
+    {
+      if (yWhere > 0)
+        yWhere--;
+      joystickCoolDown = joystickCoolDownStart;
+    }
+    if (joyDir & TAJoystickDown)
+    {
+      if (yWhere < rows - 1)
+        yWhere++;
+      joystickCoolDown = joystickCoolDownStart;
+    }
+    if (joyDir & TAJoystickLeft)
+    {
+      if (xWhere > 0)
+        xWhere--;
+      joystickCoolDown = joystickCoolDownStart;
+    }
+    if (joyDir & TAJoystickRight)
+    {
+      if (xWhere < column - 1)
+        xWhere++;
+      joystickCoolDown = joystickCoolDownStart;
+    }
+    where = xWhere + yWhere * column;
+    rows = (rect[3] - rect[1] + 1) / 8;
+    if (where < top)
+    {
+      top -= column;
+    }
+    if (where >= top + (rows * column))
+    {
+      top += column;
+    }
+  }
+  return -1;
+}
+
+void Dialog::draw(int line, uint8_t lineBuffer[96 * 2])
+{
+  int rows = (rect[3] - rect[1] + 1) / 8;
+  if ((line >= rect[1]) && (line <= rect[3]))
+  {
+    int colOffset = (rect[2] - rect[0] + 1) / column;
+    {
+      int offset = rect[0] - 2;
+      if (offset < 0)
+        offset = 0;
+      int distance = rect[2] - rect[0] + 5;
+      if (distance > 96)
+        distance = 96;
+      memset(lineBuffer + offset * 2, 0x00, distance * 2);
+    }
+    memset(lineBuffer + (rect[0] - 1) * 2, 0xFF, 2);
+    memset(lineBuffer + (rect[2] + 1) * 2, 0xFF, 2);
+    int yOffset = (line - rect[1]) % 8;
+    int yWhere = (line - rect[1]) / 8;
+    if (yOffset != 7)
+    {
+      for (int col = 0; col < column; col++)
+      {
+        if (where == top + col + (yWhere * column))
+        {
+          if (yOffset == 4)
+            memset(lineBuffer + (rect[0] + (colOffset * col) + 2) * 2, 0xFF, 3 * 2);
+          else if ((yOffset == 3) || (yOffset == 5))
+            memset(lineBuffer + (rect[0] + (colOffset * col) + 2) * 2, 0xFF, 2 * 2);
+          else if ((yOffset == 2) || (yOffset == 6))
+            memset(lineBuffer + (rect[0] + (colOffset * col) + 2) * 2, 0xFF, 1 * 2);
+        }
+        for (int i = 0; option[yWhere * column + col][i] != 0; i++)
+        {
+          const uint8_t *fontData = world.getFontData(option[yWhere * column + col][i], yOffset);
+          memcpy(lineBuffer + ((rect[0] + (colOffset * col) + 6 + (i * 6)) * 2), fontData, 6 * 2);
+        }
+      }
+    }
+  }
+  else if ((line == rect[1] - 1) || (line == rect[3] + 1))
+  {
+    memset(lineBuffer + (rect[0] - 1) * 2, 0xFF, (rect[2] - rect[0] + 3) * 2);
+    if (rect[0] - 2 >= 0)
+      memset(lineBuffer + (rect[0] - 2) * 2, 0x00, 2);
+    if (rect[2] + 2 >= 0)
+      memset(lineBuffer + (rect[2] + 2) * 2, 0x00, 2);
+  }
+  else if ((line == rect[1] - 2) || (line == rect[3] + 2))
+  {
+    int offset = rect[0] - 2;
+    if (offset < 0)
+      offset = 0;
+    int distance = rect[2] - rect[0] + 5;
+    if (distance > 96)
+      distance = 96;
+    memset(lineBuffer + offset * 2, 0x00, distance * 2);
+  }
+}
+
+void Dialog::setOptions(uint8_t col, uint8_t c, const char **o)
+{
+  top = 0;
+  column = col;
+  count = c;
+  option = o;
+}
+
 void World::update()
 {
   uint8_t btn = checkButton(TAButton1 | TAButton2);
@@ -541,6 +680,8 @@ void World::update()
   }
   else
   {
+    if (btn == TAButton1)
+      state = STATE_BATTLECHOICE;
   }
 }
 
@@ -657,56 +798,23 @@ const uint8_t *World::getFontData(char c, int y)
   return _image_charmap_oldschool_white_data + (x + y * (18 * 6 )) * 2;
 }
 
-World world;
-
 class Battle
 {
   public:
-    Battle() : action(0) {}
+    Battle() : action(0), choice(optionRect) { choice.setOptions(2, 4, baseOption); }
     void update();
     void draw();
 
+    Dialog choice;
     uint8_t action;
     static const char *baseOption[4];
-    static uint8_t optionRect[4][4];
+    static const uint8_t optionRect[];
 };
 
 
 void Battle::update()
 {
-  uint8_t btn = checkButton(TAButton1 | TAButton2);
-  uint8_t joyDir = checkJoystick(TAJoystickUp | TAJoystickDown | TAJoystickLeft | TAJoystickRight);
-  if (joystickCoolDown > 0)
-  {
-    joystickCoolDown--;
-  }
-  else
-  {
-    if (joyDir & TAJoystickUp)
-    {
-      if (action & 0x01)
-        action -= 1;
-      joystickCoolDown = joystickCoolDownStart;
-    }
-    if (joyDir & TAJoystickDown)
-    {
-      if ((action & 0x01) == 0)
-        action += 1;
-      joystickCoolDown = joystickCoolDownStart;
-    }
-    if (joyDir & TAJoystickLeft)
-    {
-      if (action & 0x02)
-        action -= 2;
-      joystickCoolDown = joystickCoolDownStart;
-    }
-    if (joyDir & TAJoystickRight)
-    {
-      if ((action & 0x02) == 0)
-        action += 2;
-      joystickCoolDown = joystickCoolDownStart;
-    }
-  }
+  choice.process();
 }
 
 void Battle::draw()
@@ -722,30 +830,7 @@ void Battle::draw()
     memcpy(lineBuffer + (48 *2), activeOpponent->img + (lines * 48 * 2), 48 * 2);
     if (state == STATE_BATTLECHOICE)
     {
-      for (int rect = 0; rect < 4; rect++)
-      {
-        if (rect == (action & 0xFF))
-        {
-          if ((lines == optionRect[rect][1]) || (lines == optionRect[rect][3]))
-          {
-            memset(lineBuffer + (optionRect[rect][0] * 2), 0xFF, ((optionRect[rect][2] - optionRect[rect][0] + 1) * 2));
-          }
-          if ((lines > optionRect[rect][1]) && (lines < optionRect[rect][3]))
-          {
-            memset(lineBuffer + (optionRect[rect][0] * 2), 0xFF, 2);
-            memset(lineBuffer + (optionRect[rect][2] * 2), 0xFF, 2);
-          }
-        }
-        if ((lines > optionRect[rect][1]) && (lines < optionRect[rect][3]))
-        {
-          memset(lineBuffer + ((optionRect[rect][0] + 1) * 2), 0x00, ((optionRect[rect][2] - optionRect[rect][0] - 1) * 2));
-          for (int i = 0; baseOption[rect][i] != 0; i++)
-          {
-            const uint8_t *fontData = world.getFontData(baseOption[rect][i], lines - optionRect[rect][1] - 1);
-            memcpy(lineBuffer + ((optionRect[rect][0] + 1 + (i * 6)) * 2), fontData, 6 * 2);
-          }
-        }
-      }
+      choice.draw(lines, lineBuffer);
     }
     display.writeBuffer(lineBuffer,96 * 2);
   }
@@ -753,7 +838,7 @@ void Battle::draw()
 }
 
 const char *Battle::baseOption[4] = { "Attack", "Item", "Swap", "Run" };
-uint8_t Battle::optionRect[4][4] = { {0, 46, 47, 54}, {0, 55, 47, 63}, {48, 46, 95, 54}, {48, 55, 95, 63}, };
+const uint8_t Battle::optionRect[] = { 1, 47, 94, 62};
 
 Battle battle;
 
