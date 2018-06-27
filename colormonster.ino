@@ -48,7 +48,7 @@ class ColorMonsterPart
     ColorMonsterPart() : part(PART_NONE) {}
 
     uint8_t part;
-    uint8_t color;
+    int color;
     uint8_t strength;
     uint8_t health;
 };
@@ -92,6 +92,44 @@ void ColorMonster::init(uint8_t bm)
 
 void ColorMonster::calculateColor()
 {
+  for (int i = 0; i < 5; i++)
+  {
+    if (part[i].part == PART_NONE)
+      break;
+    uint8_t region = monsterType[baseMonster].part[part[i].part].region;
+    const unsigned char *baseImg = monsterType[baseMonster].img;
+    uint8_t endColor(0);
+    int colors[100][2];
+    for (int l = 0; l < 96*64; l++)
+    {
+      if (baseImg[l] == region)
+      {
+        bool found = false;
+        for (int k = 0; k < endColor; k++)
+        {
+          if (colors[k][0] == ((img[l * 2 + 1] << 8) + img[l * 2]))
+          {
+            colors[k][1]++;
+            found = true;
+            break;
+          }
+        }
+        if ((!found) && (endColor < 100))
+        {
+          colors[endColor][0] = (img[l * 2 + 1] << 8) + img[l * 2];
+          colors[endColor][1] = 1;
+          endColor++;
+        }
+      }
+    }
+    int max = 0;
+    for (int k = 1; k < endColor; k++)
+    {
+      if (colors[k][1] > colors[max][1])
+        max = k;
+    }
+    part[i].color = colors[max][0];
+  }
 }
 
 ColorMonster party[1];
@@ -302,6 +340,7 @@ void Painter::update()
           dataFile.write(active->img, 64*48*2);
           dataFile.sync();
           dataFile.close();
+          active->calculateColor();
           active->saved = true;
           state = STATE_WORLD;
         }
@@ -1026,6 +1065,7 @@ void setup()
   SerialUSB.begin(9600);
   active->init(0);
   activeOpponent->init(0);
+  activeOpponent->calculateColor();
   if (!sd.begin(10,SPI_FULL_SPEED)) {
     SerialUSB.println("Card failed");
     while(1);
