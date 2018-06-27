@@ -3,7 +3,7 @@
 #include <SPI.h>
 #include <Wire.h>
 #include "TinyConfig.h"
-#include "cateye.h"
+#include "monsters.h"
 #include "tileset.h"
 #include "font.h"
 #include "ui.h"
@@ -28,6 +28,13 @@ SdFile dataFile;
 #define BUTTON_COOLDOWN 5
 #define JOYSTICK_COOLDOWNSTART 4
 
+#define DIRECTION_UP 1
+#define DIRECTION_DOWN 2
+#define DIRECTION_LEFT 3
+#define DIRECTION_RIGHT 4
+
+#define COLLISION_NPC 2
+
 int state = 0;
 int buttonCoolDown = 0;
 int joystickCoolDown = 0;
@@ -49,18 +56,20 @@ class ColorMonsterPart
 class ColorMonster
 {
   public:
-    ColorMonster() : saved(false) { memset(img, 0, 64*48*2); }
-    void initImage(const unsigned char *bi);
+    ColorMonster() : baseMonster(255), saved(false) { memset(img, 0, 64*48*2); }
+    void init(uint8_t bm);
+    void calculateColor();
 
+    uint8_t baseMonster;
     unsigned char img[64*48*2];
-    const unsigned char *baseImg;
     ColorMonsterPart part[5];
     bool saved;
 };
 
-void ColorMonster::initImage(const unsigned char *bi)
+void ColorMonster::init(uint8_t bm)
 {
-  baseImg = bi;
+  baseMonster = bm;
+  const unsigned char *baseImg = monsterType[baseMonster].img;
   for (int i = 0; i < 64*48; i++)
   {
     if (baseImg[i] == 0)
@@ -74,6 +83,15 @@ void ColorMonster::initImage(const unsigned char *bi)
       img[i * 2 + 1] = 255;
     }
   }
+  for (int i = 0; i < 2; i++)
+  {
+    part[i].part = i;
+    part[i].strength = part[i].health = monsterType[baseMonster].part[i].strength;
+  }
+}
+
+void ColorMonster::calculateColor()
+{
 }
 
 ColorMonster party[1];
@@ -89,6 +107,7 @@ class Trainer
     int location;
     uint8_t icon;
     int x, y;
+    uint8_t dir;
 };
 
 Trainer pc;
@@ -240,12 +259,13 @@ void Painter::update()
       }
       else if (tool == TOOL_FLOOD)
       {
-        unsigned char fillSpot = active->baseImg[dy * 48 + dx];
+        const unsigned char *baseImg = monsterType[active->baseMonster].img;
+        unsigned char fillSpot = baseImg[dy * 48 + dx];
         if (fillSpot != 0)
         {
           for (int i = 0; i < 64*48; i++)
           {
-            if (active->baseImg[i] == fillSpot)
+            if (baseImg[i] == fillSpot)
             {
               active->img[i * 2] = color1;
               active->img[i * 2 + 1] = color2;
@@ -563,7 +583,7 @@ void World::init()
     npc[i].x = currentArea->npc[i].startX;
     npc[i].y = currentArea->npc[i].startY;
     npc[i].dir = 255;
-    collision[currentArea->xSize * (npc[i].y / 8) + (npc[i].x / 8)] = 2;
+    collision[currentArea->xSize * (npc[i].y / 8) + (npc[i].x / 8)] = COLLISION_NPC;
   }
 }
 
@@ -579,6 +599,7 @@ void World::update()
   {
     if ((joyDir & TAJoystickUp) && (pc.y > 0))
     {
+      pc.dir = DIRECTION_UP;
       if ((pc.y % 8) == 0)
       {
         int yWhere = pc.y / 8;
@@ -612,6 +633,7 @@ void World::update()
     }
     else if ((joyDir & TAJoystickDown) && (pc.y < (currentArea->ySize - 1) * 8))
     {
+      pc.dir = DIRECTION_DOWN;
       if ((pc.y % 8) == 0)
       {
         int yWhere = pc.y / 8;
@@ -645,6 +667,7 @@ void World::update()
     }
     if ((joyDir & TAJoystickLeft) && (pc.x > 0))
     {
+      pc.dir = DIRECTION_LEFT;
       if ((pc.x % 8) == 0)
       {
         int yWhere = pc.y / 8;
@@ -678,6 +701,7 @@ void World::update()
     }
     else if ((joyDir & TAJoystickRight) && (pc.x < (currentArea->xSize - 1) * 8))
     {
+      pc.dir = DIRECTION_RIGHT;
       if ((pc.x % 8) == 0)
       {
         int yWhere = pc.y / 8;
@@ -716,8 +740,100 @@ void World::update()
   }
   else
   {
-    if (btn == TAButton1)
+    if (btn == TAButton2)
+    {
       state = STATE_BATTLECHOICE;
+      buttonCoolDown = BUTTON_COOLDOWN;
+    }
+    else if (btn == TAButton1)
+    {
+      int yWhere = pc.y / 8;
+      int xWhere = pc.x / 8;
+      int yMod = pc.y % 8;
+      int xMod = pc.x % 8;
+      uint8_t col = 0;
+      buttonCoolDown = BUTTON_COOLDOWN;
+      switch (pc.dir)
+      {
+        case DIRECTION_UP:
+          if ((yMod < 3) && (yWhere > 0))
+          {
+            col = getCollision(xWhere, yWhere - 1);
+            if (col > 1)
+              yWhere--;
+            else if (xMod > 0)
+            {
+              col = getCollision(xWhere + 1, yWhere - 1);
+              if (col > 1)
+              {
+                xWhere++;
+                yWhere--;
+              }
+            }
+          }
+          break;
+        case DIRECTION_DOWN:
+          if ((yMod < 3) && (yWhere + 1 < currentArea->ySize))
+          {
+            col = getCollision(xWhere, yWhere + 1);
+            if (col > 1)
+              yWhere++;
+            else if (xMod > 0)
+            {
+              col = getCollision(xWhere + 1, yWhere + 1);
+              if (col > 1)
+              {
+                xWhere++;
+                yWhere++;
+              }
+            }
+          }
+          break;
+        case DIRECTION_LEFT:
+          if ((xMod < 3) && (xWhere > 0))
+          {
+            col = getCollision(xWhere - 1, yWhere);
+            if (col > 1)
+              xWhere--;
+            else if (yMod > 0)
+            {
+              col = getCollision(xWhere - 1, yWhere + 1);
+              if (col > 1)
+              {
+                xWhere--;
+                yWhere++;
+              }
+            }
+          }
+          break;
+        case DIRECTION_RIGHT:
+          if ((xMod < 3) && (xWhere < currentArea->xSize - 1))
+          {
+            col = getCollision(xWhere + 1, yWhere);
+            if (col > 1)
+              xWhere++;
+            else if (xMod > 0)
+            {
+              col = getCollision(xWhere + 1, yWhere + 1);
+              if (col > 1)
+              {
+                xWhere++;
+                yWhere++;
+              }
+            }
+          }
+          break;
+        default:
+          break;
+      }
+      switch (col)
+      {
+        case COLLISION_NPC:
+          break;
+        default:
+          break;
+      }
+    }
   }
 }
 
@@ -908,8 +1024,8 @@ void setup()
   USBDevice.attach();
 #endif
   SerialUSB.begin(9600);
-  active->initImage(_image_cateye_data);
-  activeOpponent->initImage(_image_cateye_data);
+  active->init(0);
+  activeOpponent->init(0);
   if (!sd.begin(10,SPI_FULL_SPEED)) {
     SerialUSB.println("Card failed");
     while(1);
