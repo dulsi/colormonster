@@ -93,14 +93,24 @@ class Trainer
 
 Trainer pc;
 
+class NPC
+{
+  public:
+    const char *name;
+    uint8_t icon;
+    int startX,startY;
+};
+
 class Area
 {
   public:
-    Area(uint8_t x, uint8_t y, const uint8_t *d, const uint8_t *c) : xSize(x), ySize(y), data(d), collision(c) {}
+    Area(uint8_t x, uint8_t y, const uint8_t *d, const uint8_t *c, uint8_t cNPC, const NPC *n) : xSize(x), ySize(y), data(d), collision(c), countNPC(cNPC), npc(n) {}
 
     uint8_t xSize, ySize;
     const uint8_t *data;
     const uint8_t *collision;
+    uint8_t countNPC;
+    const NPC *npc;
 };
 
 const uint8_t startTownMap[] = {
@@ -139,7 +149,8 @@ const uint8_t startTownCollision[] = {
   0, 0, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
   0, 0, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
 };
-const Area startTown(24, 16, startTownMap, startTownCollision);
+const NPC startTownNPC[] = { { "Jessica", 27, 80, 40 } };
+const Area startTown(24, 16, startTownMap, startTownCollision, 1, startTownNPC);
 
 #define TOOL_DRAW 0
 #define TOOL_FLOOD 1
@@ -381,18 +392,31 @@ void Painter::draw()
 
 Painter paint;
 
+class NPCInstance
+{
+  public:
+    int x, y;
+    uint8_t dir;
+};
+
 class World
 {
   public:
+    World(const Area *cArea) : currentArea(cArea) { init(); }
+    void init();
     void update();
     void draw();
     uint8_t getCollision(int xWhere, int yWhere);
     uint8_t getTile(int x, int y);
     const uint8_t *getTileData(int tile, int y);
     const uint8_t *getFontData(char c, int y);
+
+    const Area *currentArea;
+    uint8_t collision[800];
+    NPCInstance npc[30];
 };
 
-World world;
+World world(&startTown);
 
 class Dialog
 {
@@ -531,6 +555,18 @@ void Dialog::setOptions(uint8_t col, uint8_t c, const char **o)
   option = o;
 }
 
+void World::init()
+{
+  memcpy(collision, currentArea->collision, currentArea->xSize * currentArea->ySize);
+  for (int i = 0; i < currentArea->countNPC; i++)
+  {
+    npc[i].x = currentArea->npc[i].startX;
+    npc[i].y = currentArea->npc[i].startY;
+    npc[i].dir = 255;
+    collision[currentArea->xSize * (npc[i].y / 8) + (npc[i].x / 8)] = 2;
+  }
+}
+
 void World::update()
 {
   uint8_t btn = checkButton(TAButton1 | TAButton2);
@@ -574,7 +610,7 @@ void World::update()
       else
         pc.y--;
     }
-    else if ((joyDir & TAJoystickDown) && (pc.y < (startTown.ySize - 1) * 8))
+    else if ((joyDir & TAJoystickDown) && (pc.y < (currentArea->ySize - 1) * 8))
     {
       if ((pc.y % 8) == 0)
       {
@@ -640,7 +676,7 @@ void World::update()
       else
         pc.x--;
     }
-    else if ((joyDir & TAJoystickRight) && (pc.x < (startTown.xSize - 1) * 8))
+    else if ((joyDir & TAJoystickRight) && (pc.x < (currentArea->xSize - 1) * 8))
     {
       if ((pc.x % 8) == 0)
       {
@@ -699,7 +735,7 @@ void World::draw()
   for(int lines = 0; lines < 64; ++lines)
   {
     int currentY = startY + lines;
-    if ((currentY < 0) || (currentY >= (startTown.ySize * 8)))
+    if ((currentY < 0) || (currentY >= (currentArea->ySize * 8)))
     {
       memset(lineBuffer, 0, 96 * 2);
     }
@@ -726,7 +762,7 @@ void World::draw()
       }
       while (x <= 88)
       {
-        if (startX + x > ((startTown.xSize - 1) * 8))
+        if (startX + x > ((currentArea->xSize - 1) * 8))
         {
           memset(lineBuffer + x * 2, 0, (96 - x) * 2);
           x = 96;
@@ -742,7 +778,7 @@ void World::draw()
       if (x != 96)
       {
         int init = 96 - x;
-        if (startX + x > ((startTown.xSize - 1) * 8))
+        if (startX + x > ((currentArea->xSize - 1) * 8))
         {
           memset(lineBuffer + x * 2, 0, init * 2);
           x = 96;
@@ -754,6 +790,21 @@ void World::draw()
             memset(lineBuffer + x * 2, 255, init * 2);
           else
             memcpy(lineBuffer + x * 2, getTileData(currentTile, currentY % 8), init * 2);
+        }
+      }
+      for (int n = 0; n < currentArea->countNPC; n++)
+      {
+        if ((currentY >= npc[n].y) && (currentY < npc[n].y + 8))
+        {
+          const uint8_t *data = getTileData(currentArea->npc[n].icon, currentY - npc[n].y);
+          for (int i = 0; i < 8; i++)
+          {
+            if (((data[i * 2] != 255) || (data[i * 2 + 1] != 255)) && (startX <= npc[n].x + i) && (startX + 96 > npc[n].x + i))
+            {
+              lineBuffer[(npc[n].x + i - startX) * 2] = data[i * 2];
+              lineBuffer[(npc[n].x + i - startX) * 2 + 1] = data[i * 2 + 1];
+            }
+          }
         }
       }
       if ((currentY >= pc.y) && (currentY < pc.y + 8))
@@ -776,12 +827,12 @@ void World::draw()
 
 uint8_t World::getCollision(int xWhere, int yWhere)
 {
-  return startTown.collision[xWhere + (yWhere * startTown.xSize)];
+  return collision[xWhere + (yWhere * currentArea->xSize)];
 }
 
 uint8_t World::getTile(int x, int y)
 {
-  return startTown.data[x / 8 + ((y / 8) * startTown.xSize)];
+  return currentArea->data[x / 8 + ((y / 8) * currentArea->xSize)];
 }
 
 const uint8_t *World::getTileData(int tile, int y)
@@ -838,7 +889,7 @@ void Battle::draw()
 }
 
 const char *Battle::baseOption[4] = { "Attack", "Item", "Swap", "Run" };
-const uint8_t Battle::optionRect[] = { 1, 47, 94, 62};
+const uint8_t Battle::optionRect[] = { 1, 48, 94, 63};
 
 Battle battle;
 
