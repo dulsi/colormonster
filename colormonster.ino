@@ -66,6 +66,7 @@ class ColorMonster
   public:
     ColorMonster() : baseMonster(255), saved(false) { memset(img, 0, 64*48*2); }
     void init(uint8_t bm);
+    void buildChoice(bool target, uint8_t &choiceEnd, char **choiceList, char *choiceString);
     void calculateColor();
 
     uint8_t baseMonster;
@@ -95,6 +96,33 @@ void ColorMonster::init(uint8_t bm)
   {
     part[i].part = i;
     part[i].strength = part[i].health = monsterType[baseMonster].part[i].strength;
+  }
+}
+
+void ColorMonster::buildChoice(bool target, uint8_t &choiceEnd, char **choiceList, char *choiceString)
+{
+  choiceEnd = 0;
+  int where = 0;
+  for (int i = 0; i < 5; i++)
+  {
+    if (part[i].part == PART_NONE)
+      break;
+    const ColorMonsterPartType &partType = monsterType[baseMonster].part[part[i].part];
+    if ((target) || (partType.type == PARTTYPE_CORE) || (partType.type == PARTTYPE_WEAPON))
+    {
+      choiceList[choiceEnd] = choiceString + where;
+      if ((i == 0) && (target))
+      {
+        strcpy(choiceString + where, "Body");
+        where += 5;
+      }
+      else
+      {
+        strcpy(choiceString + where, partType.name);
+        where += strlen(partType.name) + 1;
+      }
+      choiceEnd++;
+    }
   }
 }
 
@@ -1034,12 +1062,17 @@ const uint8_t *World::getFontData(char c, int y)
 class Battle
 {
   public:
-    Battle() : action(0), choice(optionRect) { choice.setOptions(2, 4, baseOption); }
+    Battle() : choice(optionRect) { init(); }
+    void init();
     void update();
     void draw();
 
     Dialog choice;
-    uint8_t action;
+    struct {
+      int base : 3;
+      int subaction : 5;
+      int target : 5;
+    } action;
     uint8_t choiceEnd;
     char *choiceList[10];
     char choiceString[500];
@@ -1047,6 +1080,13 @@ class Battle
     static const uint8_t optionRect[];
 };
 
+void Battle::init()
+{
+  choice.setOptions(2, 4, baseOption);
+  action.base = 0;
+  action.subaction = 0;
+  action.target = 0;
+}
 
 void Battle::update()
 {
@@ -1055,15 +1095,30 @@ void Battle::update()
     uint8_t c = choice.process();
     if (c != CHOICE_NONE)
     {
-      if (action & 0xF0)
+      if (action.base)
       {
         if (c == CHOICE_BACK)
         {
-          choice.setOptions(2, 4, baseOption);
-          action = 0;
+          if ((action.base == BASEOPTION_ATTACK) && (action.subaction != 0))
+          {
+            action.subaction = 0;
+            active->buildChoice(false, choiceEnd, choiceList, choiceString);
+            choice.setOptions(2, choiceEnd, (const char **)choiceList);
+          }
+          else
+          {
+            choice.setOptions(2, 4, baseOption);
+            action.base = 0;
+          }
         }
         else
         {
+          if ((action.base == BASEOPTION_ATTACK) && (action.subaction == 0))
+          {
+            action.subaction = c + 1;
+            activeOpponent->buildChoice(true, choiceEnd, choiceList, choiceString);
+            choice.setOptions(2, choiceEnd, (const char **)choiceList);
+          }
         }
       }
       else if (c != CHOICE_BACK)
@@ -1075,22 +1130,8 @@ void Battle::update()
         }
         else if (c == BASEOPTION_ATTACK)
         {
-          action = c << 4;
-          choiceEnd = 0;
-          int where = 0;
-          for (int i = 0; i < 5; i++)
-          {
-            if (active->part[i].part == PART_NONE)
-              break;
-            const ColorMonsterPartType &partType = monsterType[active->baseMonster].part[active->part[i].part];
-            if ((partType.type == PARTTYPE_CORE) || (partType.type == PARTTYPE_WEAPON))
-            {
-              strcpy(choiceString + where, partType.name);
-              choiceList[choiceEnd] = choiceString + where;
-              where += strlen(partType.name) + 1;
-              choiceEnd++;
-            }
-          }
+          action.base = c;
+          active->buildChoice(false, choiceEnd, choiceList, choiceString);
           choice.setOptions(2, choiceEnd, (const char **)choiceList);
         }
       }
