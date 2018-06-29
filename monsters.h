@@ -26,7 +26,7 @@ class ColorMonsterType
 
 const ColorMonsterType monsterType[] =
 {
-  {"Cateye", _image_cateye_data, {{"Slam", 0x49, PARTTYPE_CORE, 6}, {"Eye Blast", 0x6c, PARTTYPE_WEAPON, 6}, {"Kick", 0x0b, PARTTYPE_WEAPON, 8}, {"Tail", 0x10, PARTTYPE_WEAPON, 8}, {"Hearing", 0xe0, PARTTYPE_SHIELD, 4}}}
+  {"Cateye", _image_cateye_data, {{"Slam", 0x49, PARTTYPE_CORE, 6}, {"EyeZap", 0x6c, PARTTYPE_WEAPON, 6}, {"Kick", 0x0b, PARTTYPE_WEAPON, 8}, {"Tail", 0x10, PARTTYPE_WEAPON, 8}, {"Hearing", 0xe0, PARTTYPE_SHIELD, 4}}}
 };
 
 #endif

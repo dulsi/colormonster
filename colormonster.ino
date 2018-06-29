@@ -35,6 +35,14 @@ SdFile dataFile;
 
 #define COLLISION_NPC 2
 
+#define CHOICE_NONE 255
+#define CHOICE_BACK 254
+
+#define BASEOPTION_ATTACK 1
+#define BASEOPTION_ITEM 2
+#define BASEOPTION_SWAP 3
+#define BASEOPTION_RUN 4
+
 int state = 0;
 int buttonCoolDown = 0;
 int joystickCoolDown = 0;
@@ -543,7 +551,23 @@ uint8_t Dialog::process()
       top += column;
     }
   }
-  return -1;
+  if (buttonCoolDown > 0)
+  {
+    buttonCoolDown--;
+  }
+  else
+  {
+    buttonCoolDown = BUTTON_COOLDOWN;
+    if (btn == TAButton1)
+    {
+      return where;
+    }
+    else if (btn == TAButton2)
+    {
+      return CHOICE_BACK;
+    }
+  }
+  return CHOICE_NONE;
 }
 
 void Dialog::draw(int line, uint8_t lineBuffer[96 * 2])
@@ -578,10 +602,13 @@ void Dialog::draw(int line, uint8_t lineBuffer[96 * 2])
           else if ((yOffset == 2) || (yOffset == 6))
             memset(lineBuffer + (rect[0] + (colOffset * col) + 2) * 2, 0xFF, 1 * 2);
         }
-        for (int i = 0; option[yWhere * column + col][i] != 0; i++)
+        if (yWhere * column + col < count)
         {
-          const uint8_t *fontData = world.getFontData(option[yWhere * column + col][i], yOffset);
-          memcpy(lineBuffer + ((rect[0] + (colOffset * col) + 6 + (i * 6)) * 2), fontData, 6 * 2);
+          for (int i = 0; (option[yWhere * column + col][i] != 0) && (12 + (i * 6) < colOffset); i++)
+          {
+            const uint8_t *fontData = world.getFontData(option[yWhere * column + col][i], yOffset);
+            memcpy(lineBuffer + ((rect[0] + (colOffset * col) + 6 + (i * 6)) * 2), fontData, 6 * 2);
+          }
         }
       }
     }
@@ -1013,6 +1040,9 @@ class Battle
 
     Dialog choice;
     uint8_t action;
+    uint8_t choiceEnd;
+    char *choiceList[10];
+    char choiceString[500];
     static const char *baseOption[4];
     static const uint8_t optionRect[];
 };
@@ -1020,7 +1050,52 @@ class Battle
 
 void Battle::update()
 {
-  choice.process();
+  if (state == STATE_BATTLECHOICE)
+  {
+    uint8_t c = choice.process();
+    if (c != CHOICE_NONE)
+    {
+      if (action & 0xF0)
+      {
+        if (c == CHOICE_BACK)
+        {
+          choice.setOptions(2, 4, baseOption);
+          action = 0;
+        }
+        else
+        {
+        }
+      }
+      else if (c != CHOICE_BACK)
+      {
+        c++;
+        if (c == BASEOPTION_RUN)
+        {
+          state = STATE_WORLD;
+        }
+        else if (c == BASEOPTION_ATTACK)
+        {
+          action = c << 4;
+          choiceEnd = 0;
+          int where = 0;
+          for (int i = 0; i < 5; i++)
+          {
+            if (active->part[i].part == PART_NONE)
+              break;
+            const ColorMonsterPartType &partType = monsterType[active->baseMonster].part[active->part[i].part];
+            if ((partType.type == PARTTYPE_CORE) || (partType.type == PARTTYPE_WEAPON))
+            {
+              strcpy(choiceString + where, partType.name);
+              choiceList[choiceEnd] = choiceString + where;
+              where += strlen(partType.name) + 1;
+              choiceEnd++;
+            }
+          }
+          choice.setOptions(2, choiceEnd, (const char **)choiceList);
+        }
+      }
+    }
+  }
 }
 
 void Battle::draw()
