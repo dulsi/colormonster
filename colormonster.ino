@@ -24,6 +24,7 @@ SdFile dataFile;
 #define STATE_PAINTZOOM 1
 #define STATE_WORLD 2
 #define STATE_BATTLECHOICE 3
+#define STATE_BATTLE 4
 
 #define BUTTON_COOLDOWN 5
 #define JOYSTICK_COOLDOWNSTART 4
@@ -49,6 +50,11 @@ int joystickCoolDown = 0;
 int joystickCoolDownStart = JOYSTICK_COOLDOWNSTART;
 
 #define PART_NONE 255
+
+const uint8_t bottomRow[] = { 1, 48, 94, 63};
+
+const char noItems[] = "You have no items.";
+const char noSwap[] = "You have no more monsters.";
 
 class ColorMonsterPart
 {
@@ -513,6 +519,101 @@ class World
 
 World world(&startTown);
 
+class MessageBox
+{
+  public:
+    MessageBox(const uint8_t *r) : rect(r) {  }
+
+    void setText(const char *t);
+    void draw(int line, uint8_t lineBuffer[96 * 2]);
+
+  private:
+    const uint8_t *rect;
+    char text[7][16];
+};
+
+void MessageBox::setText(const char *t)
+{
+  const char *where = t;
+  int indx = 0;
+  int len = strlen(t);
+  int letters = (rect[2] - rect[0] + 1) / 6;
+  for (int i = 0; i < 7; i++)
+    text[i][0] = 0;
+  while (*where)
+  {
+    strncpy(text[indx], where, letters);
+    if (len < letters)
+      break;
+    int i = letters - 1;
+    while ((i > 0) && (text[indx][i] != ' '))
+      i--;
+    if (i == 0)
+    {
+      i = letters;
+      text[indx][letters - 1] = 0;
+      len -= i;
+    }
+    else
+    {
+      text[indx][i] = 0;
+      if (where[i] != 0)
+      {
+        i++;
+      }
+      len -= i;
+    }
+    where += i;
+    indx++;
+  }
+}
+
+void MessageBox::draw(int line, uint8_t lineBuffer[96 * 2])
+{
+  if ((line >= rect[1]) && (line <= rect[3]))
+  {
+    {
+      int offset = rect[0] - 2;
+      if (offset < 0)
+        offset = 0;
+      int distance = rect[2] - rect[0] + 5;
+      if (distance > 96)
+        distance = 96;
+      memset(lineBuffer + offset * 2, 0x00, distance * 2);
+    }
+    memset(lineBuffer + (rect[0] - 1) * 2, 0xFF, 2);
+    memset(lineBuffer + (rect[2] + 1) * 2, 0xFF, 2);
+    int yOffset = (line - rect[1]) % 8;
+    int yWhere = (line - rect[1]) / 8;
+    if (yOffset != 7)
+    {
+      for (int i = 0; text[yWhere][i]; i++)
+      {
+        const uint8_t *fontData = world.getFontData(text[yWhere][i], yOffset);
+        memcpy(lineBuffer + ((rect[0] + i * 6) * 2), fontData, 6 * 2);
+      }
+    }
+  }
+  else if ((line == rect[1] - 1) || (line == rect[3] + 1))
+  {
+    memset(lineBuffer + (rect[0] - 1) * 2, 0xFF, (rect[2] - rect[0] + 3) * 2);
+    if (rect[0] - 2 >= 0)
+      memset(lineBuffer + (rect[0] - 2) * 2, 0x00, 2);
+    if (rect[2] + 2 >= 0)
+      memset(lineBuffer + (rect[2] + 2) * 2, 0x00, 2);
+  }
+  else if ((line == rect[1] - 2) || (line == rect[3] + 2))
+  {
+    int offset = rect[0] - 2;
+    if (offset < 0)
+      offset = 0;
+    int distance = rect[2] - rect[0] + 5;
+    if (distance > 96)
+      distance = 96;
+    memset(lineBuffer + offset * 2, 0x00, distance * 2);
+  }
+}
+
 class Dialog
 {
   public:
@@ -530,6 +631,10 @@ class Dialog
     uint8_t count;
     const char **option;
 };
+
+
+Dialog choice(bottomRow);
+MessageBox bottomMessage(bottomRow);
 
 uint8_t Dialog::process()
 {
@@ -1062,12 +1167,11 @@ const uint8_t *World::getFontData(char c, int y)
 class Battle
 {
   public:
-    Battle() : choice(optionRect) { init(); }
+    Battle() { init(); }
     void init();
     void update();
     void draw();
 
-    Dialog choice;
     struct {
       int base : 3;
       int subaction : 5;
@@ -1076,8 +1180,9 @@ class Battle
     uint8_t choiceEnd;
     char *choiceList[10];
     char choiceString[500];
+    bool message;
+    bool initiative[2];
     static const char *baseOption[4];
-    static const uint8_t optionRect[];
 };
 
 void Battle::init()
@@ -1086,6 +1191,9 @@ void Battle::init()
   action.base = 0;
   action.subaction = 0;
   action.target = 0;
+  message = false;
+  initiative[0] = false;
+  initiative[1] = false;
 }
 
 void Battle::update()
@@ -1119,6 +1227,14 @@ void Battle::update()
             activeOpponent->buildChoice(true, choiceEnd, choiceList, choiceString);
             choice.setOptions(2, choiceEnd, (const char **)choiceList);
           }
+          else if ((action.base == BASEOPTION_ATTACK) && (action.subaction == 0))
+          {
+            action.target = c + 1;
+            message = false;
+            initiative[0] = true;
+            initiative[1] = true;
+            state = STATE_BATTLE;
+          }
         }
       }
       else if (c != CHOICE_BACK)
@@ -1134,7 +1250,42 @@ void Battle::update()
           active->buildChoice(false, choiceEnd, choiceList, choiceString);
           choice.setOptions(2, choiceEnd, (const char **)choiceList);
         }
+        else if (c == BASEOPTION_ITEM)
+        {
+          bottomMessage.setText(noItems);
+          message = true;
+          state = STATE_BATTLE;
+        }
+        else if (c == BASEOPTION_SWAP)
+        {
+          bottomMessage.setText(noSwap);
+          message = true;
+          state = STATE_BATTLE;
+        }
       }
+    }
+  }
+  else if (state == STATE_BATTLE)
+  {
+    if (message)
+    {
+      uint8_t btn = checkButton(TAButton1 | TAButton2);
+      if (buttonCoolDown > 0)
+      {
+        buttonCoolDown--;
+      }
+      else
+      {
+        if ((btn == TAButton1) || (btn == TAButton2))
+        {
+          state = STATE_BATTLECHOICE;
+          buttonCoolDown = BUTTON_COOLDOWN;
+          init();
+        }
+      }
+    }
+    else
+    {
     }
   }
 }
@@ -1154,13 +1305,16 @@ void Battle::draw()
     {
       choice.draw(lines, lineBuffer);
     }
+    else if (state == STATE_BATTLE)
+    {
+      bottomMessage.draw(lines, lineBuffer);
+    }
     display.writeBuffer(lineBuffer,96 * 2);
   }
   display.endTransfer();
 }
 
 const char *Battle::baseOption[4] = { "Attack", "Item", "Swap", "Run" };
-const uint8_t Battle::optionRect[] = { 1, 48, 94, 63};
 
 Battle battle;
 
@@ -1215,7 +1369,7 @@ void loop()
     world.update();
     world.draw();
   }
-  else if (state == STATE_BATTLECHOICE)
+  else if ((state == STATE_BATTLECHOICE) || (state == STATE_BATTLE))
   {
     battle.update();
     battle.draw();
