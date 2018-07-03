@@ -1171,12 +1171,14 @@ class Battle
     void init();
     void update();
     void draw();
+    void chooseAction();
+    void runAction(int a);
 
     struct {
       int base : 3;
       int subaction : 5;
       int target : 5;
-    } action;
+    } action[2];
     uint8_t choiceEnd;
     char *choiceList[10];
     char choiceString[500];
@@ -1188,9 +1190,9 @@ class Battle
 void Battle::init()
 {
   choice.setOptions(2, 4, baseOption);
-  action.base = 0;
-  action.subaction = 0;
-  action.target = 0;
+  action[0].base = 0;
+  action[0].subaction = 0;
+  action[0].target = 0;
   message = false;
   initiative[0] = false;
   initiative[1] = false;
@@ -1203,33 +1205,33 @@ void Battle::update()
     uint8_t c = choice.process();
     if (c != CHOICE_NONE)
     {
-      if (action.base)
+      if (action[0].base)
       {
         if (c == CHOICE_BACK)
         {
-          if ((action.base == BASEOPTION_ATTACK) && (action.subaction != 0))
+          if ((action[0].base == BASEOPTION_ATTACK) && (action[0].subaction != 0))
           {
-            action.subaction = 0;
+            action[0].subaction = 0;
             active->buildChoice(false, choiceEnd, choiceList, choiceString);
             choice.setOptions(2, choiceEnd, (const char **)choiceList);
           }
           else
           {
             choice.setOptions(2, 4, baseOption);
-            action.base = 0;
+            action[0].base = 0;
           }
         }
         else
         {
-          if ((action.base == BASEOPTION_ATTACK) && (action.subaction == 0))
+          if ((action[0].base == BASEOPTION_ATTACK) && (action[0].subaction == 0))
           {
-            action.subaction = c + 1;
+            action[0].subaction = c + 1;
             activeOpponent->buildChoice(true, choiceEnd, choiceList, choiceString);
             choice.setOptions(2, choiceEnd, (const char **)choiceList);
           }
-          else if ((action.base == BASEOPTION_ATTACK) && (action.subaction == 0))
+          else if ((action[0].base == BASEOPTION_ATTACK) && (action[0].subaction != 0))
           {
-            action.target = c + 1;
+            action[0].target = c + 1;
             message = false;
             initiative[0] = true;
             initiative[1] = true;
@@ -1246,7 +1248,7 @@ void Battle::update()
         }
         else if (c == BASEOPTION_ATTACK)
         {
-          action.base = c;
+          action[0].base = c;
           active->buildChoice(false, choiceEnd, choiceList, choiceString);
           choice.setOptions(2, choiceEnd, (const char **)choiceList);
         }
@@ -1278,14 +1280,32 @@ void Battle::update()
       {
         if ((btn == TAButton1) || (btn == TAButton2))
         {
-          state = STATE_BATTLECHOICE;
+          if ((!initiative[0]) && (!initiative[1]))
+          {
+            state = STATE_BATTLECHOICE;
+            init();
+          }
+          else
+            message = false;
           buttonCoolDown = BUTTON_COOLDOWN;
-          init();
         }
       }
     }
     else
     {
+      int choose = 0;
+      if ((initiative[0]) && (initiative[1]))
+      {
+        chooseAction();
+        if (random(0, 2) == 1)
+          choose = 1;
+      }
+      else if (initiative[1])
+      {
+        choose = 1;
+      }
+      initiative[choose] = false;
+      runAction(choose);
     }
   }
 }
@@ -1300,7 +1320,8 @@ void Battle::draw()
   for(int lines = 0; lines < 64; ++lines)
   {
     memcpy(lineBuffer, active->img + (lines * 48 * 2), 48 * 2);
-    memcpy(lineBuffer + (48 *2), activeOpponent->img + (lines * 48 * 2), 48 * 2);
+    for (int i = 0; i < 48; i++)
+      memcpy(lineBuffer + ((48 + i) *2), activeOpponent->img + (((lines * 48) + (47 - i)) * 2), 2);
     if (state == STATE_BATTLECHOICE)
     {
       choice.draw(lines, lineBuffer);
@@ -1312,6 +1333,36 @@ void Battle::draw()
     display.writeBuffer(lineBuffer,96 * 2);
   }
   display.endTransfer();
+}
+
+void Battle::chooseAction()
+{
+  // Always base attack and body target. AI will be added later.
+  action[1].base = BASEOPTION_ATTACK;
+  action[1].subaction = 1;
+  action[1].target = 1;
+}
+
+void Battle::runAction(int a)
+{
+  ColorMonster *mon[2];
+  message = true;
+  if (action[a].base == BASEOPTION_ATTACK)
+  {
+    if (a == 0)
+    {
+      mon[0] = active;
+      mon[1] = activeOpponent;
+    }
+    else
+    {
+      mon[1] = active;
+      mon[0] = activeOpponent;
+    }
+    int damage = random(1, mon[0]->part[action[a].subaction - 1].strength + 1);
+    sprintf(choiceString, "%s hits for %d damage.", monsterType[mon[0]->baseMonster].part[mon[0]->part[action[a].subaction - 1].part].name, damage);
+    bottomMessage.setText(choiceString);
+  }
 }
 
 const char *Battle::baseOption[4] = { "Attack", "Item", "Swap", "Run" };
@@ -1333,6 +1384,7 @@ void setup()
   USBDevice.attach();
 #endif
   SerialUSB.begin(9600);
+  randomSeed(analogRead(0));
   active->init(0);
   activeOpponent->init(0);
   activeOpponent->calculateColor();
