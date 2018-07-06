@@ -19,8 +19,8 @@ Download the tinyscreensim. Run it with the command like:
 Now you should be able to run colormonster.
 
 # Thanks
-Color Monster uses a modified tinyscreen-spritetile-lib by jonwingrove
-https://github.com/jonwingrove/tinyscreen-spritetile-lib
-
 The Cateye image is based on the Cateye from Tuxemon by Cavalcadeur is
 licensed under CC-BY-SA 4.0
+
+The font is ASCII Bitmap Font "oldschool" by domsson
+https://opengameart.org/content/ascii-bitmap-font-oldschool
