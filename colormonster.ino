@@ -537,7 +537,7 @@ void MessageBox::setText(const char *t)
   const char *where = t;
   int indx = 0;
   int len = strlen(t);
-  int letters = (rect[2] - rect[0] + 1) / 6;
+  int letters = (rect[2] - rect[0]) / 6;
   for (int i = 0; i < 7; i++)
     text[i][0] = 0;
   while (*where)
@@ -590,7 +590,7 @@ void MessageBox::draw(int line, uint8_t lineBuffer[96 * 2])
       for (int i = 0; text[yWhere][i]; i++)
       {
         const uint8_t *fontData = world.getFontData(text[yWhere][i], yOffset);
-        memcpy(lineBuffer + ((rect[0] + i * 6) * 2), fontData, 6 * 2);
+        memcpy(lineBuffer + ((rect[0] + 1 + i * 6) * 2), fontData, 6 * 2);
       }
     }
   }
