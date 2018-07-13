@@ -25,6 +25,8 @@ SdFile dataFile;
 #define STATE_WORLD 2
 #define STATE_BATTLECHOICE 3
 #define STATE_BATTLE 4
+#define STATE_BATTLELOST 5
+#define STATE_BATTLEWON 6
 
 #define BUTTON_COOLDOWN 5
 #define JOYSTICK_COOLDOWNSTART 4
@@ -50,6 +52,8 @@ int joystickCoolDown = 0;
 int joystickCoolDownStart = JOYSTICK_COOLDOWNSTART;
 
 #define PART_NONE 255
+
+#define MONSTER_PARTYSIZE 1
 
 const uint8_t bottomRow[] = { 1, 48, 94, 63};
 
@@ -174,9 +178,9 @@ void ColorMonster::calculateColor()
   }
 }
 
-ColorMonster party[1];
+ColorMonster party[MONSTER_PARTYSIZE];
 ColorMonster *active = &party[0];
-ColorMonster opponent[1];
+ColorMonster opponent[MONSTER_PARTYSIZE];
 ColorMonster *activeOpponent = &opponent[0];
 
 class Trainer
@@ -943,6 +947,8 @@ void World::update()
     {
       state = STATE_BATTLECHOICE;
       buttonCoolDown = BUTTON_COOLDOWN;
+      activeOpponent->init(0);
+      activeOpponent->calculateColor();
     }
     else if (btn == TAButton1)
     {
@@ -1282,7 +1288,38 @@ void Battle::update()
         {
           if ((!initiative[0]) && (!initiative[1]))
           {
-            state = STATE_BATTLECHOICE;
+            if (active->part[0].health == 0)
+            {
+              for (int i = 0; i < MONSTER_PARTYSIZE; i++)
+              {
+                if (party[i].part[0].health > 0)
+                {
+                }
+              }
+            }
+            if (active->part[0].health == 0)
+            {
+              state = STATE_BATTLELOST;
+              bottomMessage.setText("You have lost the battle.");
+            }
+            if (activeOpponent->part[0].health == 0)
+            {
+              for (int i = 0; i < MONSTER_PARTYSIZE; i++)
+              {
+                if (opponent[i].part[0].health > 0)
+                {
+                  activeOpponent = &opponent[i];
+                  break;
+                }
+              }
+            }
+            if ((state == STATE_BATTLE) && (activeOpponent->part[0].health == 0))
+            {
+              state = STATE_BATTLEWON;
+              bottomMessage.setText("You have won the battle.");
+            }
+            if (state == STATE_BATTLE)
+              state = STATE_BATTLECHOICE;
             init();
           }
           else
@@ -1308,6 +1345,22 @@ void Battle::update()
       runAction(choose);
     }
   }
+  else if ((state == STATE_BATTLEWON) || (state == STATE_BATTLELOST))
+  {
+    uint8_t btn = checkButton(TAButton1 | TAButton2);
+    if (buttonCoolDown > 0)
+    {
+      buttonCoolDown--;
+    }
+    else
+    {
+      if ((btn == TAButton1) || (btn == TAButton2))
+      {
+        state = STATE_WORLD;
+        buttonCoolDown = BUTTON_COOLDOWN;
+      }
+    }
+  }
 }
 
 void Battle::draw()
@@ -1326,7 +1379,7 @@ void Battle::draw()
     {
       choice.draw(lines, lineBuffer);
     }
-    else if (state == STATE_BATTLE)
+    else if ((state == STATE_BATTLE) || (state == STATE_BATTLEWON) || (state == STATE_BATTLELOST))
     {
       bottomMessage.draw(lines, lineBuffer);
     }
@@ -1361,6 +1414,15 @@ void Battle::runAction(int a)
     }
     int damage = random(1, mon[0]->part[action[a].subaction - 1].strength + 1);
     sprintf(choiceString, "%s hits for %d damage.", monsterType[mon[0]->baseMonster].part[mon[0]->part[action[a].subaction - 1].part].name, damage);
+    if (mon[1]->part[action[a].target - 1].health <= damage)
+    {
+      mon[1]->part[action[a].target - 1].health = 0;
+      initiative[1 - a] = false;
+    }
+    else
+    {
+      mon[1]->part[action[a].target - 1].health -= damage;
+    }
     bottomMessage.setText(choiceString);
   }
 }
@@ -1386,8 +1448,6 @@ void setup()
   SerialUSB.begin(9600);
   randomSeed(analogRead(0));
   active->init(0);
-  activeOpponent->init(0);
-  activeOpponent->calculateColor();
   if (!sd.begin(10,SPI_FULL_SPEED)) {
     SerialUSB.println("Card failed");
     while(1);
@@ -1414,16 +1474,25 @@ void loop()
   if ((state == STATE_PAINT) || (state == STATE_PAINTZOOM))
   {
     paint.update();
-    paint.draw();
   }
   else if (state == STATE_WORLD)
   {
     world.update();
-    world.draw();
   }
-  else if ((state == STATE_BATTLECHOICE) || (state == STATE_BATTLE))
+  else if ((state == STATE_BATTLECHOICE) || (state == STATE_BATTLE) || (state == STATE_BATTLEWON) || (state == STATE_BATTLELOST))
   {
     battle.update();
+  }
+  if ((state == STATE_PAINT) || (state == STATE_PAINTZOOM))
+  {
+    paint.draw();
+  }
+  else if (state == STATE_WORLD)
+  {
+    world.draw();
+  }
+  else if ((state == STATE_BATTLECHOICE) || (state == STATE_BATTLE) || (state == STATE_BATTLEWON) || (state == STATE_BATTLELOST))
+  {
     battle.draw();
   }
   unsigned long oldTime = lastTime;
