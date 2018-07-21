@@ -5,6 +5,7 @@
 #include "TinyConfig.h"
 #include "monsters.h"
 #include "tileset.h"
+#include "portraits.h"
 #include "font.h"
 #include "ui.h"
 
@@ -27,6 +28,7 @@ SdFile dataFile;
 #define STATE_BATTLE 4
 #define STATE_BATTLELOST 5
 #define STATE_BATTLEWON 6
+#define STATE_TALKING 7
 
 #define BUTTON_COOLDOWN 5
 #define JOYSTICK_COOLDOWNSTART 4
@@ -37,6 +39,7 @@ SdFile dataFile;
 #define DIRECTION_RIGHT 4
 
 #define COLLISION_NPC 2
+#define MAX_NPC 30
 
 #define CHOICE_NONE 255
 #define CHOICE_BACK 254
@@ -56,6 +59,8 @@ int joystickCoolDownStart = JOYSTICK_COOLDOWNSTART;
 #define MONSTER_PARTYSIZE 1
 
 const uint8_t bottomRow[] = { 1, 48, 94, 63};
+const uint8_t nameRow[] = { 28, 37, 94, 44};
+const uint8_t portraitLoc[] = { 1, 21, 24, 44};
 
 const char noItems[] = "You have no items.";
 const char noSwap[] = "You have no more monsters.";
@@ -201,6 +206,7 @@ class NPC
   public:
     const char *name;
     uint8_t icon;
+    uint8_t portrait;
     int startX,startY;
 };
 
@@ -252,7 +258,7 @@ const uint8_t startTownCollision[] = {
   0, 0, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
   0, 0, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
 };
-const NPC startTownNPC[] = { { "Jessica", 27, 80, 40 } };
+const NPC startTownNPC[] = { { "Jessica", 27, 1, 80, 40 } };
 const Area startTown(24, 16, startTownMap, startTownCollision, 1, startTownNPC);
 
 #define TOOL_DRAW 0
@@ -511,6 +517,7 @@ class World
     void init();
     void update();
     void draw();
+    uint8_t findNPC(int xWhere, int yWhere);
     uint8_t getCollision(int xWhere, int yWhere);
     uint8_t getTile(int x, int y);
     const uint8_t *getTileData(int tile, int y);
@@ -518,7 +525,7 @@ class World
 
     const Area *currentArea;
     uint8_t collision[800];
-    NPCInstance npc[30];
+    NPCInstance npc[MAX_NPC];
 };
 
 World world(&startTown);
@@ -618,6 +625,68 @@ void MessageBox::draw(int line, uint8_t lineBuffer[96 * 2])
   }
 }
 
+class Portrait
+{
+  public:
+    Portrait(const uint8_t *r) : rect(r) {  }
+
+    void setPortrait(uint8_t p);
+    void draw(int line, uint8_t lineBuffer[96 * 2]);
+
+  private:
+    const uint8_t *rect;
+    uint8_t portrait;
+};
+
+void Portrait::setPortrait(uint8_t p)
+{
+  portrait = p;
+}
+
+void Portrait::draw(int line, uint8_t lineBuffer[96 * 2])
+{
+  if ((line >= rect[1]) && (line <= rect[3]))
+  {
+    {
+      int offset = rect[0] - 2;
+      if (offset < 0)
+        offset = 0;
+      int distance = rect[2] - rect[0] + 4;
+      if (distance > 96)
+        distance = 96;
+      memset(lineBuffer + offset * 2, 0x00, distance * 2);
+    }
+    memset(lineBuffer + (rect[0] - 1) * 2, 0xFF, 2);
+    memset(lineBuffer + (rect[2] + 1) * 2, 0xFF, 2);
+    for (int i = 0; i < 24; i++)
+    {
+      uint8_t val = _image_portraits_data[portrait * 24 * 24 + (line - rect[1]) * 24 + i];
+      lineBuffer[(rect[0] + i) * 2] = val;
+      lineBuffer[(rect[0] + i) * 2 + 1] = val;
+    }
+  }
+  else if ((line == rect[1] - 1) || (line == rect[3] + 1))
+  {
+    memset(lineBuffer + (rect[0] - 1) * 2, 0xFF, (rect[2] - rect[0] + 3) * 2);
+    if (rect[0] - 2 >= 0)
+      memset(lineBuffer + (rect[0] - 2) * 2, 0x00, 2);
+    if (rect[2] + 2 >= 0)
+      memset(lineBuffer + (rect[2] + 2) * 2, 0x00, 2);
+  }
+  else if ((line == rect[1] - 2) || (line == rect[3] + 2))
+  {
+    int offset = rect[0] - 2;
+    if (offset < 0)
+      offset = 0;
+    int distance = rect[2] - rect[0] + 4;
+    if (distance > 96)
+      distance = 96;
+    memset(lineBuffer + offset * 2, 0x00, distance * 2);
+  }
+}
+
+Portrait portrait(portraitLoc);
+
 class Dialog
 {
   public:
@@ -638,6 +707,7 @@ class Dialog
 
 
 Dialog choice(bottomRow);
+MessageBox nameMessage(nameRow);
 MessageBox bottomMessage(bottomRow);
 
 uint8_t Dialog::process()
@@ -794,249 +864,274 @@ void World::update()
 {
   uint8_t btn = checkButton(TAButton1 | TAButton2);
   uint8_t joyDir = checkJoystick(TAJoystickUp | TAJoystickDown | TAJoystickLeft | TAJoystickRight);
-  if (joystickCoolDown > 0)
+  if (state == STATE_TALKING)
   {
-    joystickCoolDown--;
+    if (buttonCoolDown > 0)
+    {
+      buttonCoolDown--;
+    }
+    else
+    {
+      if (btn == TAButton1)
+      {
+        state = STATE_WORLD;
+        buttonCoolDown = BUTTON_COOLDOWN;
+      }
+    }
   }
   else
   {
-    if ((joyDir & TAJoystickUp) && (pc.y > 0))
+    if (joystickCoolDown > 0)
     {
-      pc.dir = DIRECTION_UP;
-      if ((pc.y % 8) == 0)
-      {
-        int yWhere = pc.y / 8;
-        int xWhere = pc.x / 8;
-        int xMod = pc.x % 8;
-        bool col1 = getCollision(xWhere, yWhere - 1);
-        if (xMod == 0)
-        {
-          if (col1 == 0)
-            pc.y--;
-        }
-        else
-        {
-          bool col2 = getCollision(xWhere + 1, yWhere - 1);
-          if ((col1 == 0) && (col2 == 0))
-            pc.y--;
-          else if ((col1 == 0) && (col2 != 0) && (xMod == 1))
-          {
-            pc.y--;
-            pc.x--;
-          }
-          else if ((col1 != 0) && (col2 == 0) && (xMod == 7))
-          {
-            pc.y--;
-            pc.x++;
-          }
-        }
-      }
-      else
-        pc.y--;
+      joystickCoolDown--;
     }
-    else if ((joyDir & TAJoystickDown) && (pc.y < (currentArea->ySize - 1) * 8))
+    else
     {
-      pc.dir = DIRECTION_DOWN;
-      if ((pc.y % 8) == 0)
+      if ((joyDir & TAJoystickUp) && (pc.y > 0))
       {
-        int yWhere = pc.y / 8;
-        int xWhere = pc.x / 8;
-        int xMod = pc.x % 8;
-        bool col1 = getCollision(xWhere, yWhere + 1);
-        if (xMod == 0)
+        pc.dir = DIRECTION_UP;
+        if ((pc.y % 8) == 0)
         {
-          if (col1 == 0)
-            pc.y++;
-        }
-        else
-        {
-          bool col2 = getCollision(xWhere + 1, yWhere + 1);
-          if ((col1 == 0) && (col2 == 0))
-            pc.y++;
-          else if ((col1 == 0) && (col2 != 0) && (xMod == 1))
+          int yWhere = pc.y / 8;
+          int xWhere = pc.x / 8;
+          int xMod = pc.x % 8;
+          bool col1 = getCollision(xWhere, yWhere - 1);
+          if (xMod == 0)
           {
-            pc.y++;
-            pc.x--;
+            if (col1 == 0)
+              pc.y--;
           }
-          else if ((col1 != 0) && (col2 == 0) && (xMod == 7))
+          else
           {
-            pc.y++;
-            pc.x++;
-          }
-        }
-      }
-      else
-        pc.y++;
-    }
-    if ((joyDir & TAJoystickLeft) && (pc.x > 0))
-    {
-      pc.dir = DIRECTION_LEFT;
-      if ((pc.x % 8) == 0)
-      {
-        int yWhere = pc.y / 8;
-        int xWhere = pc.x / 8;
-        int yMod = pc.y % 8;
-        bool col1 = getCollision(xWhere - 1, yWhere);
-        if (yMod == 0)
-        {
-          if (col1 == 0)
-            pc.x--;
-        }
-        else
-        {
-          bool col2 = getCollision(xWhere - 1, yWhere + 1);
-          if ((col1 == 0) && (col2 == 0))
-            pc.x--;
-          else if ((col1 == 0) && (col2 != 0) && (yMod == 1))
-          {
-            pc.y--;
-            pc.x--;
-          }
-          else if ((col1 != 0) && (col2 == 0) && (yMod == 7))
-          {
-            pc.y++;
-            pc.x--;
-          }
-        }
-      }
-      else
-        pc.x--;
-    }
-    else if ((joyDir & TAJoystickRight) && (pc.x < (currentArea->xSize - 1) * 8))
-    {
-      pc.dir = DIRECTION_RIGHT;
-      if ((pc.x % 8) == 0)
-      {
-        int yWhere = pc.y / 8;
-        int xWhere = pc.x / 8;
-        int yMod = pc.y % 8;
-        bool col1 = getCollision(xWhere + 1, yWhere);
-        if (yMod == 0)
-        {
-          if (col1 == 0)
-            pc.x++;
-        }
-        else
-        {
-          bool col2 = getCollision(xWhere + 1, yWhere + 1);
-          if ((col1 == 0) && (col2 == 0))
-            pc.x++;
-          else if ((col1 == 0) && (col2 != 0) && (yMod == 1))
-          {
-            pc.y--;
-            pc.x++;
-          }
-          else if ((col1 != 0) && (col2 == 0) && (yMod == 7))
-          {
-            pc.y++;
-            pc.x++;
-          }
-        }
-      }
-      else
-        pc.x++;
-    }
-  }
-  if (buttonCoolDown > 0)
-  {
-    buttonCoolDown--;
-  }
-  else
-  {
-    if (btn == TAButton2)
-    {
-      state = STATE_BATTLECHOICE;
-      buttonCoolDown = BUTTON_COOLDOWN;
-      activeOpponent->init(0);
-      activeOpponent->calculateColor();
-    }
-    else if (btn == TAButton1)
-    {
-      int yWhere = pc.y / 8;
-      int xWhere = pc.x / 8;
-      int yMod = pc.y % 8;
-      int xMod = pc.x % 8;
-      uint8_t col = 0;
-      buttonCoolDown = BUTTON_COOLDOWN;
-      switch (pc.dir)
-      {
-        case DIRECTION_UP:
-          if ((yMod < 3) && (yWhere > 0))
-          {
-            col = getCollision(xWhere, yWhere - 1);
-            if (col > 1)
-              yWhere--;
-            else if (xMod > 0)
+            bool col2 = getCollision(xWhere + 1, yWhere - 1);
+            if ((col1 == 0) && (col2 == 0))
+              pc.y--;
+            else if ((col1 == 0) && (col2 != 0) && (xMod == 1))
             {
-              col = getCollision(xWhere + 1, yWhere - 1);
+              pc.y--;
+              pc.x--;
+            }
+            else if ((col1 != 0) && (col2 == 0) && (xMod == 7))
+            {
+              pc.y--;
+              pc.x++;
+            }
+          }
+        }
+        else
+          pc.y--;
+      }
+      else if ((joyDir & TAJoystickDown) && (pc.y < (currentArea->ySize - 1) * 8))
+      {
+        pc.dir = DIRECTION_DOWN;
+        if ((pc.y % 8) == 0)
+        {
+          int yWhere = pc.y / 8;
+          int xWhere = pc.x / 8;
+          int xMod = pc.x % 8;
+          bool col1 = getCollision(xWhere, yWhere + 1);
+          if (xMod == 0)
+          {
+            if (col1 == 0)
+              pc.y++;
+          }
+          else
+          {
+            bool col2 = getCollision(xWhere + 1, yWhere + 1);
+            if ((col1 == 0) && (col2 == 0))
+              pc.y++;
+            else if ((col1 == 0) && (col2 != 0) && (xMod == 1))
+            {
+              pc.y++;
+              pc.x--;
+            }
+            else if ((col1 != 0) && (col2 == 0) && (xMod == 7))
+            {
+              pc.y++;
+              pc.x++;
+            }
+          }
+        }
+        else
+          pc.y++;
+      }
+      if ((joyDir & TAJoystickLeft) && (pc.x > 0))
+      {
+        pc.dir = DIRECTION_LEFT;
+        if ((pc.x % 8) == 0)
+        {
+          int yWhere = pc.y / 8;
+          int xWhere = pc.x / 8;
+          int yMod = pc.y % 8;
+          bool col1 = getCollision(xWhere - 1, yWhere);
+          if (yMod == 0)
+          {
+            if (col1 == 0)
+              pc.x--;
+          }
+          else
+          {
+            bool col2 = getCollision(xWhere - 1, yWhere + 1);
+            if ((col1 == 0) && (col2 == 0))
+              pc.x--;
+            else if ((col1 == 0) && (col2 != 0) && (yMod == 1))
+            {
+              pc.y--;
+              pc.x--;
+            }
+            else if ((col1 != 0) && (col2 == 0) && (yMod == 7))
+            {
+              pc.y++;
+              pc.x--;
+            }
+          }
+        }
+        else
+          pc.x--;
+      }
+      else if ((joyDir & TAJoystickRight) && (pc.x < (currentArea->xSize - 1) * 8))
+      {
+        pc.dir = DIRECTION_RIGHT;
+        if ((pc.x % 8) == 0)
+        {
+          int yWhere = pc.y / 8;
+          int xWhere = pc.x / 8;
+          int yMod = pc.y % 8;
+          bool col1 = getCollision(xWhere + 1, yWhere);
+          if (yMod == 0)
+          {
+            if (col1 == 0)
+              pc.x++;
+          }
+          else
+          {
+            bool col2 = getCollision(xWhere + 1, yWhere + 1);
+            if ((col1 == 0) && (col2 == 0))
+              pc.x++;
+            else if ((col1 == 0) && (col2 != 0) && (yMod == 1))
+            {
+              pc.y--;
+              pc.x++;
+            }
+            else if ((col1 != 0) && (col2 == 0) && (yMod == 7))
+            {
+              pc.y++;
+              pc.x++;
+            }
+          }
+        }
+        else
+          pc.x++;
+      }
+    }
+    if (buttonCoolDown > 0)
+    {
+      buttonCoolDown--;
+    }
+    else
+    {
+      if (btn == TAButton2)
+      {
+        state = STATE_BATTLECHOICE;
+        buttonCoolDown = BUTTON_COOLDOWN;
+        activeOpponent->init(0);
+        activeOpponent->calculateColor();
+      }
+      else if (btn == TAButton1)
+      {
+        int yWhere = pc.y / 8;
+        int xWhere = pc.x / 8;
+        int yMod = pc.y % 8;
+        int xMod = pc.x % 8;
+        uint8_t col = 0;
+        buttonCoolDown = BUTTON_COOLDOWN;
+        switch (pc.dir)
+        {
+          case DIRECTION_UP:
+            if ((yMod < 3) && (yWhere > 0))
+            {
+              col = getCollision(xWhere, yWhere - 1);
               if (col > 1)
-              {
-                xWhere++;
                 yWhere--;
+              else if (xMod > 0)
+              {
+                col = getCollision(xWhere + 1, yWhere - 1);
+                if (col > 1)
+                {
+                  xWhere++;
+                  yWhere--;
+                }
               }
             }
-          }
-          break;
-        case DIRECTION_DOWN:
-          if ((yMod < 3) && (yWhere + 1 < currentArea->ySize))
-          {
-            col = getCollision(xWhere, yWhere + 1);
-            if (col > 1)
-              yWhere++;
-            else if (xMod > 0)
+            break;
+          case DIRECTION_DOWN:
+            if ((yMod < 3) && (yWhere + 1 < currentArea->ySize))
             {
-              col = getCollision(xWhere + 1, yWhere + 1);
+              col = getCollision(xWhere, yWhere + 1);
               if (col > 1)
-              {
-                xWhere++;
                 yWhere++;
+              else if (xMod > 0)
+              {
+                col = getCollision(xWhere + 1, yWhere + 1);
+                if (col > 1)
+                {
+                  xWhere++;
+                  yWhere++;
+                }
               }
             }
-          }
-          break;
-        case DIRECTION_LEFT:
-          if ((xMod < 3) && (xWhere > 0))
-          {
-            col = getCollision(xWhere - 1, yWhere);
-            if (col > 1)
-              xWhere--;
-            else if (yMod > 0)
+            break;
+          case DIRECTION_LEFT:
+            if ((xMod < 3) && (xWhere > 0))
             {
-              col = getCollision(xWhere - 1, yWhere + 1);
+              col = getCollision(xWhere - 1, yWhere);
               if (col > 1)
-              {
                 xWhere--;
-                yWhere++;
-              }
-            }
-          }
-          break;
-        case DIRECTION_RIGHT:
-          if ((xMod < 3) && (xWhere < currentArea->xSize - 1))
-          {
-            col = getCollision(xWhere + 1, yWhere);
-            if (col > 1)
-              xWhere++;
-            else if (xMod > 0)
-            {
-              col = getCollision(xWhere + 1, yWhere + 1);
-              if (col > 1)
+              else if (yMod > 0)
               {
-                xWhere++;
-                yWhere++;
+                col = getCollision(xWhere - 1, yWhere + 1);
+                if (col > 1)
+                {
+                  xWhere--;
+                  yWhere++;
+                }
               }
             }
+            break;
+          case DIRECTION_RIGHT:
+            if ((xMod < 3) && (xWhere < currentArea->xSize - 1))
+            {
+              col = getCollision(xWhere + 1, yWhere);
+              if (col > 1)
+                xWhere++;
+              else if (xMod > 0)
+              {
+                col = getCollision(xWhere + 1, yWhere + 1);
+                if (col > 1)
+                {
+                  xWhere++;
+                  yWhere++;
+                }
+              }
+            }
+            break;
+          default:
+            break;
+        }
+        switch (col)
+        {
+          case COLLISION_NPC:
+          {
+            int who = findNPC(xWhere, yWhere);
+            state = STATE_TALKING;
+            nameMessage.setText(currentArea->npc[who].name);
+            bottomMessage.setText("Hello.");
+            portrait.setPortrait(currentArea->npc[who].portrait);
+            break;
           }
-          break;
-        default:
-          break;
-      }
-      switch (col)
-      {
-        case COLLISION_NPC:
-          break;
-        default:
-          break;
+          default:
+            break;
+        }
       }
     }
   }
@@ -1141,9 +1236,29 @@ void World::draw()
         }
       }
     }
+    if (state == STATE_TALKING)
+    {
+      portrait.draw(lines, lineBuffer);
+      nameMessage.draw(lines, lineBuffer);
+      bottomMessage.draw(lines, lineBuffer);
+    }
     display.writeBuffer(lineBuffer,96 * 2);
   }
   display.endTransfer();
+}
+
+uint8_t World::findNPC(int xWhere, int yWhere)
+{
+  for (int i = 0; i < currentArea->countNPC; i++)
+  {
+    int npcXWhere = npc[i].x / 8;
+    int npcYWhere = npc[i].y / 8;
+    if ((xWhere == npcXWhere) && (yWhere == npcYWhere))
+    {
+      return i;
+    }
+  }
+  return 255;
 }
 
 uint8_t World::getCollision(int xWhere, int yWhere)
@@ -1475,7 +1590,7 @@ void loop()
   {
     paint.update();
   }
-  else if (state == STATE_WORLD)
+  else if ((state == STATE_WORLD) || (state == STATE_TALKING))
   {
     world.update();
   }
@@ -1487,7 +1602,7 @@ void loop()
   {
     paint.draw();
   }
-  else if (state == STATE_WORLD)
+  else if ((state == STATE_WORLD) || (state == STATE_TALKING))
   {
     world.draw();
   }
