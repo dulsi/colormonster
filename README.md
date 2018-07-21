@@ -20,7 +20,14 @@ Now you should be able to run colormonster.
 
 # Thanks
 The Cateye image is based on the Cateye from Tuxemon by Cavalcadeur is
-licensed under CC-BY-SA 4.0
+licensed under CC-BY-SA 4.0. Transformed to black and white by Dennis Payne.
+
+The Weavifly image is based of the Weavifly from Tuzemon by Spalding004 is
+licensed under Creative Commons Attribution 4.0 International licence.
+Transformed to black and white by Dennis Payne.
 
 The font is ASCII Bitmap Font "oldschool" by domsson
 https://opengameart.org/content/ascii-bitmap-font-oldschool
+
+The portraits are based on 48x48 Face Template by Charles Gabriel. Commissioned
+by OpenGameArt.org (http://opengameart.org). Modified by Dennis Payne.
