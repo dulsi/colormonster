@@ -59,7 +59,7 @@ int joystickCoolDownStart = JOYSTICK_COOLDOWNSTART;
 #define MONSTER_PARTYSIZE 1
 
 const uint8_t bottomRow[] = { 1, 48, 94, 63};
-const uint8_t nameRow[] = { 28, 37, 94, 44};
+uint8_t nameRow[] = { 28, 37, 94, 44};
 const uint8_t portraitLoc[] = { 1, 21, 24, 44};
 
 const char noItems[] = "You have no items.";
@@ -548,13 +548,14 @@ void MessageBox::setText(const char *t)
   const char *where = t;
   int indx = 0;
   int len = strlen(t);
-  int letters = (rect[2] - rect[0]) / 6;
+  int letters = (rect[2] - rect[0] + 1) / 6;
   for (int i = 0; i < 7; i++)
     text[i][0] = 0;
   while (*where)
   {
     strncpy(text[indx], where, letters);
-    if (len < letters)
+    text[indx][letters] = 0;
+    if (len <= letters)
       break;
     int i = letters - 1;
     while ((i > 0) && (text[indx][i] != ' '))
@@ -1124,6 +1125,7 @@ void World::update()
           {
             int who = findNPC(xWhere, yWhere);
             state = STATE_TALKING;
+            nameRow[2] = nameRow[0] + strlen(currentArea->npc[who].name) * 6;
             nameMessage.setText(currentArea->npc[who].name);
             bottomMessage.setText("Hello.");
             portrait.setPortrait(currentArea->npc[who].portrait);
