@@ -49,6 +49,8 @@ SdFile dataFile;
 #define BASEOPTION_SWAP 3
 #define BASEOPTION_RUN 4
 
+#define PATTERN_LINES 1
+
 int state = 0;
 int buttonCoolDown = 0;
 int joystickCoolDown = 0;
@@ -64,6 +66,14 @@ const uint8_t portraitLoc[] = { 1, 21, 24, 44};
 
 const char noItems[] = "You have no items.";
 const char noSwap[] = "You have no more monsters.";
+
+class ColorRule
+{
+  public:
+    uint8_t instruct;
+    unsigned char origColor;
+    uint8_t color[2][2];
+};
 
 class ColorMonsterPart
 {
@@ -81,6 +91,7 @@ class ColorMonster
   public:
     ColorMonster() : baseMonster(255), saved(false) { memset(img, 0, 64*48*2); }
     void init(uint8_t bm);
+    void init(uint8_t bm, int count, const ColorRule *r);
     void buildChoice(bool target, uint8_t &choiceEnd, char **choiceList, char *choiceString);
     void calculateColor();
 
@@ -105,6 +116,60 @@ void ColorMonster::init(uint8_t bm)
     {
       img[i * 2] = 255;
       img[i * 2 + 1] = 255;
+    }
+  }
+  for (int i = 0; i < 2; i++)
+  {
+    part[i].part = i;
+    part[i].strength = part[i].health = monsterType[baseMonster].part[i].strength;
+  }
+}
+
+void ColorMonster::init(uint8_t bm, int count, const ColorRule *r)
+{
+  baseMonster = bm;
+  const unsigned char *baseImg = monsterType[baseMonster].img;
+  for (int i = 0; i < 64*48; i++)
+  {
+    if (baseImg[i] == 0)
+    {
+      img[i * 2] = 0;
+      img[i * 2 + 1] = 0;
+    }
+    else
+    {
+      bool processed = false;
+      for (int k = 0; k < count; k++)
+      {
+        if (baseImg[i] == r[k].origColor)
+        {
+          processed = true;
+          switch (r[k].instruct)
+          {
+            case PATTERN_LINES:
+              if ((i / 4) % 2 == 1)
+              {
+                img[i * 2] = r[k].color[1][0];
+                img[i * 2 + 1] = r[k].color[1][1];
+              }
+              else
+              {
+                img[i * 2] = r[k].color[0][0];
+                img[i * 2 + 1] = r[k].color[0][1];
+              }
+              break;
+            default:
+              img[i * 2] = r[k].color[0][0];
+              img[i * 2 + 1] = r[k].color[0][1];
+              break;
+          }
+        }
+      }
+      if (!processed)
+      {
+        img[i * 2] = 255;
+        img[i * 2 + 1] = 255;
+      }
     }
   }
   for (int i = 0; i < 2; i++)
@@ -259,6 +324,10 @@ const uint8_t startTownCollision[] = {
   0, 0, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
 };
 const NPC startTownNPC[] = { { "Jessica", 27, 1, 80, 40 } };
+const ColorRule jessCateyeRule[] = {
+ { 0, 0x49, { { 0x08, 0x54 }, { 0, 0 } } },
+ { PATTERN_LINES, 0x03, { { 0x08, 0x54 }, { 0, 0 } } }
+};
 const Area startTown(24, 16, startTownMap, startTownCollision, 1, startTownNPC);
 
 #define TOOL_DRAW 0
@@ -1035,7 +1104,7 @@ void World::update()
       {
         state = STATE_BATTLECHOICE;
         buttonCoolDown = BUTTON_COOLDOWN;
-        activeOpponent->init(0);
+        activeOpponent->init(0, 2, (const ColorRule *)jessCateyeRule);
         activeOpponent->calculateColor();
       }
       else if (btn == TAButton1)
