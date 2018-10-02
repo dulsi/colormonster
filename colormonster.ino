@@ -50,6 +50,7 @@ SdFile dataFile;
 #define BASEOPTION_RUN 4
 
 #define PATTERN_LINES 1
+#define PATTERN_SCALE 2
 
 int state = 0;
 int buttonCoolDown = 0;
@@ -156,6 +157,35 @@ void ColorMonster::init(uint8_t bm, int count, const ColorRule *r)
               {
                 img[i * 2] = r[k].color[0][0];
                 img[i * 2 + 1] = r[k].color[0][1];
+              }
+              break;
+            case PATTERN_SCALE:
+              if ((i / 48) % 2 == 1)
+              {
+                if (((((i / 96) % 2 == 1) && ((i + 7) % 8) < 2)) || (((i / 96) % 2 == 0) && ((i + 3) % 8) < 2))
+                {
+                 img[i * 2] = r[k].color[1][0];
+                 img[i * 2 + 1] = r[k].color[1][1];
+                }
+                else
+                {
+                 img[i * 2] = r[k].color[0][0];
+                 img[i * 2 + 1] = r[k].color[0][1];
+                }
+              }
+              else
+              {
+                int j = i % 8;
+                if (((i / 96) % 2 == 1) && ((j == 0) || (j == 3)) || (((i / 96) % 2 == 0) && ((j == 4) || (j == 7))))
+                {
+                 img[i * 2] = r[k].color[1][0];
+                 img[i * 2 + 1] = r[k].color[1][1];
+                }
+                else
+                {
+                 img[i * 2] = r[k].color[0][0];
+                 img[i * 2 + 1] = r[k].color[0][1];
+                }
               }
               break;
             default:
@@ -326,7 +356,7 @@ const uint8_t startTownCollision[] = {
 const NPC startTownNPC[] = { { "Jessica", 27, 1, 80, 40 } };
 const ColorRule jessCateyeRule[] = {
  { 0, 0x49, { { 0x08, 0x54 }, { 0, 0 } } },
- { PATTERN_LINES, 0x03, { { 0x08, 0x54 }, { 0, 0 } } }
+ { PATTERN_LINES, 0x03, { { 0x05, 0xe0 }, { 0x13, 0x02 } } }
 };
 const Area startTown(24, 16, startTownMap, startTownCollision, 1, startTownNPC);
 
