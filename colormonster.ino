@@ -37,6 +37,7 @@ SdFile dataFile;
 #define DIRECTION_DOWN 2
 #define DIRECTION_LEFT 3
 #define DIRECTION_RIGHT 4
+#define DIRECTION_NONE 255
 
 #define COLLISION_NPC 2
 #define MAX_NPC 30
@@ -53,6 +54,7 @@ SdFile dataFile;
 #define PATTERN_SCALE 2
 
 int state = 0;
+int turn = 0;
 int buttonCoolDown = 0;
 int joystickCoolDown = 0;
 int joystickCoolDownStart = JOYSTICK_COOLDOWNSTART;
@@ -615,6 +617,7 @@ class World
     World(const Area *cArea) : currentArea(cArea) { init(); }
     void init();
     void update();
+    void updateNPCs();
     void draw();
     uint8_t findNPC(int xWhere, int yWhere);
     uint8_t getCollision(int xWhere, int yWhere);
@@ -955,13 +958,15 @@ void World::init()
   {
     npc[i].x = currentArea->npc[i].startX;
     npc[i].y = currentArea->npc[i].startY;
-    npc[i].dir = 255;
+    npc[i].dir = DIRECTION_NONE;
     collision[currentArea->xSize * (npc[i].y / 8) + (npc[i].x / 8)] = COLLISION_NPC;
   }
 }
 
 void World::update()
 {
+  turn++;
+  updateNPCs();
   uint8_t btn = checkButton(TAButton1 | TAButton2);
   uint8_t joyDir = checkJoystick(TAJoystickUp | TAJoystickDown | TAJoystickLeft | TAJoystickRight);
   if (state == STATE_TALKING)
@@ -1238,6 +1243,111 @@ void World::update()
   }
 }
 
+void World::updateNPCs()
+{
+  for (int i = 0; i < currentArea->countNPC; i++)
+  {
+    if (npc[i].dir != DIRECTION_NONE)
+    {
+      switch (npc[i].dir)
+      {
+        case DIRECTION_UP:
+          npc[i].y--;
+          if (npc[i].y % 8 == 0)
+          {
+            npc[i].dir = DIRECTION_NONE;
+            collision[currentArea->xSize * ((npc[i].y + 8) / 8) + (npc[i].x / 8)] = 0;
+          }
+          break;
+        case DIRECTION_DOWN:
+          npc[i].y++;
+          if (npc[i].y % 8 == 0)
+          {
+            npc[i].dir = DIRECTION_NONE;
+            collision[currentArea->xSize * ((npc[i].y - 8) / 8) + (npc[i].x / 8)] = 0;
+          }
+          break;
+        case DIRECTION_LEFT:
+          npc[i].x--;
+          if (npc[i].x % 8 == 0)
+          {
+            npc[i].dir = DIRECTION_NONE;
+            collision[currentArea->xSize * (npc[i].y / 8) + ((npc[i].x + 8) / 8)] = 0;
+          }
+          break;
+        case DIRECTION_RIGHT:
+          npc[i].x++;
+          if (npc[i].x % 8 == 0)
+          {
+            npc[i].dir = DIRECTION_NONE;
+            collision[currentArea->xSize * (npc[i].y / 8) + ((npc[i].x - 8) / 8)] = 0;
+          }
+          break;
+      }
+    }
+    else if (turn % 24 == 0)
+    {
+      if (random(0, 2) == 1)
+      {
+        if (npc[i].y > currentArea->npc[i].startY + 24)
+          npc[i].dir = DIRECTION_UP;
+        else if ((npc[i].y < currentArea->npc[i].startY - 24) || (random(0, 2) == 1))
+          npc[i].dir = DIRECTION_DOWN;
+        else
+          npc[i].dir = DIRECTION_UP;
+      }
+      else
+      {
+        if (npc[i].x > currentArea->npc[i].startX + 24)
+          npc[i].dir = DIRECTION_LEFT;
+        else if ((npc[i].x < currentArea->npc[i].startX - 24) || (random(0, 2) == 1))
+          npc[i].dir = DIRECTION_RIGHT;
+        else
+          npc[i].dir = DIRECTION_LEFT;
+      }
+      switch (npc[i].dir)
+      {
+        case DIRECTION_UP:
+          if ((npc[i].y == 0) || (collision[currentArea->xSize * ((npc[i].y - 8) / 8) + (npc[i].x / 8)] != 0))
+            npc[i].dir = DIRECTION_NONE;
+          else
+          {
+            collision[currentArea->xSize * ((npc[i].y - 8) / 8) + (npc[i].x / 8)] = COLLISION_NPC;
+            npc[i].y--;
+          }
+          break;
+        case DIRECTION_DOWN:
+          if ((npc[i].y == (currentArea->ySize - 1) * 8) || (collision[currentArea->xSize * ((npc[i].y + 8) / 8) + (npc[i].x / 8)] != 0))
+            npc[i].dir = DIRECTION_NONE;
+          else
+          {
+            collision[currentArea->xSize * ((npc[i].y + 8) / 8) + (npc[i].x / 8)] = COLLISION_NPC;
+            npc[i].y++;
+          }
+          break;
+        case DIRECTION_LEFT:
+          if ((npc[i].x == 0) || (collision[currentArea->xSize * (npc[i].y / 8) + ((npc[i].x - 8) / 8)] != 0))
+            npc[i].dir = DIRECTION_NONE;
+          else
+          {
+            collision[currentArea->xSize * (npc[i].y / 8) + ((npc[i].x - 8) / 8)] = COLLISION_NPC;
+            npc[i].x--;
+          }
+          break;
+        case DIRECTION_RIGHT:
+          if ((npc[i].x == (currentArea->xSize - 1) * 8) || (collision[currentArea->xSize * (npc[i].y / 8) + ((npc[i].x + 8) / 8)] != 0))
+            npc[i].dir = DIRECTION_NONE;
+          else
+          {
+            collision[currentArea->xSize * (npc[i].y / 8) + ((npc[i].x + 8) / 8)] = COLLISION_NPC;
+            npc[i].x++;
+          }
+          break;
+      }
+    }
+  }
+}
+
 void World::draw()
 {
   int startX(0), startY(0);
@@ -1357,6 +1467,16 @@ uint8_t World::findNPC(int xWhere, int yWhere)
     if ((xWhere == npcXWhere) && (yWhere == npcYWhere))
     {
       return i;
+    }
+    if (npc[i].x % 8 != 0)
+    {
+      if ((xWhere == npcXWhere + 1) && (yWhere == npcYWhere))
+        return i;
+    }
+    else if (npc[i].x % 8 != 0)
+    {
+      if ((xWhere == npcXWhere) && (yWhere == npcYWhere + 1))
+        return i;
     }
   }
   return 255;
