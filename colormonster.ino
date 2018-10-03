@@ -42,6 +42,7 @@ SdFile dataFile;
 
 #define COLLISION_NPC 2
 #define MAX_NPC 30
+#define NPC_DISTANCE 16
 
 #define CHOICE_NONE 255
 #define CHOICE_BACK 254
@@ -625,6 +626,7 @@ class World
     uint8_t getTile(int x, int y);
     const uint8_t *getTileData(int tile, int y);
     const uint8_t *getFontData(char c, int y);
+    bool isTrainerIn(int xWhere, int yWhere);
 
     const Area *currentArea;
     uint8_t collision[800];
@@ -1178,7 +1180,12 @@ void World::update()
             }
             break;
           case DIRECTION_DOWN:
-            if ((yMod < 3) && (yWhere + 1 < currentArea->ySize))
+            if (yMod > 5)
+            {
+              yMod = 0;
+              yWhere++;
+            }
+            if ((yMod == 0) && (yWhere + 1 < currentArea->ySize))
             {
               col = getCollision(xWhere, yWhere + 1);
               if (col > 1)
@@ -1212,7 +1219,12 @@ void World::update()
             }
             break;
           case DIRECTION_RIGHT:
-            if ((xMod < 3) && (xWhere < currentArea->xSize - 1))
+            if (xMod > 5)
+            {
+              xMod = 0;
+              xWhere++;
+            }
+            if ((xMod == 0) && (xWhere < currentArea->xSize - 1))
             {
               col = getCollision(xWhere + 1, yWhere);
               if (col > 1)
@@ -1305,18 +1317,18 @@ void World::updateNPCs()
     {
       if (random(0, 2) == 1)
       {
-        if (npc[i].y > currentArea->npc[i].startY + 24)
+        if (npc[i].y > currentArea->npc[i].startY + NPC_DISTANCE)
           npc[i].dir = DIRECTION_UP;
-        else if ((npc[i].y < currentArea->npc[i].startY - 24) || (random(0, 2) == 1))
+        else if ((npc[i].y < currentArea->npc[i].startY - NPC_DISTANCE) || (random(0, 2) == 1))
           npc[i].dir = DIRECTION_DOWN;
         else
           npc[i].dir = DIRECTION_UP;
       }
       else
       {
-        if (npc[i].x > currentArea->npc[i].startX + 24)
+        if (npc[i].x > currentArea->npc[i].startX + NPC_DISTANCE)
           npc[i].dir = DIRECTION_LEFT;
-        else if ((npc[i].x < currentArea->npc[i].startX - 24) || (random(0, 2) == 1))
+        else if ((npc[i].x < currentArea->npc[i].startX - NPC_DISTANCE) || (random(0, 2) == 1))
           npc[i].dir = DIRECTION_RIGHT;
         else
           npc[i].dir = DIRECTION_LEFT;
@@ -1324,7 +1336,8 @@ void World::updateNPCs()
       switch (npc[i].dir)
       {
         case DIRECTION_UP:
-          if ((npc[i].y == 0) || (collision[currentArea->xSize * ((npc[i].y - 8) / 8) + (npc[i].x / 8)] != 0))
+        {
+          if ((npc[i].y == 0) || (collision[currentArea->xSize * ((npc[i].y - 8) / 8) + (npc[i].x / 8)] != 0) || (isTrainerIn(npc[i].x / 8, (npc[i].y - 8) / 8)))
             npc[i].dir = DIRECTION_NONE;
           else
           {
@@ -1332,8 +1345,9 @@ void World::updateNPCs()
             npc[i].y--;
           }
           break;
+        }
         case DIRECTION_DOWN:
-          if ((npc[i].y == (currentArea->ySize - 1) * 8) || (collision[currentArea->xSize * ((npc[i].y + 8) / 8) + (npc[i].x / 8)] != 0))
+          if ((npc[i].y == (currentArea->ySize - 1) * 8) || (collision[currentArea->xSize * ((npc[i].y + 8) / 8) + (npc[i].x / 8)] != 0) || (isTrainerIn(npc[i].x / 8, (npc[i].y + 8) / 8)))
             npc[i].dir = DIRECTION_NONE;
           else
           {
@@ -1342,7 +1356,7 @@ void World::updateNPCs()
           }
           break;
         case DIRECTION_LEFT:
-          if ((npc[i].x == 0) || (collision[currentArea->xSize * (npc[i].y / 8) + ((npc[i].x - 8) / 8)] != 0))
+          if ((npc[i].x == 0) || (collision[currentArea->xSize * (npc[i].y / 8) + ((npc[i].x - 8) / 8)] != 0) || (isTrainerIn((npc[i].x - 8) / 8, npc[i].y / 8)))
             npc[i].dir = DIRECTION_NONE;
           else
           {
@@ -1351,7 +1365,7 @@ void World::updateNPCs()
           }
           break;
         case DIRECTION_RIGHT:
-          if ((npc[i].x == (currentArea->xSize - 1) * 8) || (collision[currentArea->xSize * (npc[i].y / 8) + ((npc[i].x + 8) / 8)] != 0))
+          if ((npc[i].x == (currentArea->xSize - 1) * 8) || (collision[currentArea->xSize * (npc[i].y / 8) + ((npc[i].x + 8) / 8)] != 0) || (isTrainerIn((npc[i].x + 8) / 8, npc[i].y / 8)))
             npc[i].dir = DIRECTION_NONE;
           else
           {
@@ -1520,6 +1534,23 @@ const uint8_t *World::getFontData(char c, int y)
   y += ((c - 32) / 18) * 7;
   int x = ((c - 32) % 18) * 6;
   return _image_charmap_oldschool_white_data + (x + y * (18 * 6 )) * 2;
+}
+
+bool World::isTrainerIn(int xWhere, int yWhere)
+{
+  int pcXWhere = pc.x / 8;
+  int pcYWhere = pc.y / 8;
+  int modX = pc.x % 8;
+  int modY = pc.y % 8;
+  if ((xWhere == pcXWhere) && (yWhere == pcYWhere))
+    return true;
+  else if ((modX) && (xWhere == pcXWhere + 1) && (yWhere == pcYWhere))
+    return true;
+  else if ((modY) && (xWhere == pcXWhere) && (yWhere == pcYWhere + 1))
+    return true;
+  else if ((modX) && (modY) && (xWhere == pcXWhere + 1) && (yWhere == pcYWhere + 1))
+    return true;
+  return false;
 }
 
 class Battle
