@@ -37,7 +37,8 @@ SdFile dataFile;
 #define DIRECTION_DOWN 2
 #define DIRECTION_LEFT 3
 #define DIRECTION_RIGHT 4
-#define DIRECTION_NONE 255
+#define DIRECTION_NONE 128
+#define DIRECTION_PAUSE 16
 
 #define COLLISION_NPC 2
 #define MAX_NPC 30
@@ -981,6 +982,13 @@ void World::update()
       {
         state = STATE_WORLD;
         buttonCoolDown = BUTTON_COOLDOWN;
+        for (int i = 0; i < currentArea->countNPC; i++)
+        {
+          if ((npc[i].dir & DIRECTION_PAUSE) == DIRECTION_PAUSE)
+          {
+            npc[i].dir = npc[i].dir & (~DIRECTION_PAUSE);
+          }
+        }
       }
     }
   }
@@ -1228,11 +1236,17 @@ void World::update()
           case COLLISION_NPC:
           {
             int who = findNPC(xWhere, yWhere);
-            state = STATE_TALKING;
-            nameRow[2] = nameRow[0] + strlen(currentArea->npc[who].name) * 6;
-            nameMessage.setText(currentArea->npc[who].name);
-            bottomMessage.setText("Hello.");
-            portrait.setPortrait(currentArea->npc[who].portrait);
+            if (who != 255)
+            {
+              npc[who].dir |= DIRECTION_PAUSE;
+              state = STATE_TALKING;
+              nameRow[2] = nameRow[0] + strlen(currentArea->npc[who].name) * 6;
+              nameMessage.setText(currentArea->npc[who].name);
+              bottomMessage.setText("Hello.");
+              portrait.setPortrait(currentArea->npc[who].portrait);
+            }
+            else
+              printf("Error: Should not be here\n");
             break;
           }
           default:
@@ -1282,6 +1296,8 @@ void World::updateNPCs()
             npc[i].dir = DIRECTION_NONE;
             collision[currentArea->xSize * (npc[i].y / 8) + ((npc[i].x - 8) / 8)] = 0;
           }
+          break;
+        default:
           break;
       }
     }
@@ -1473,7 +1489,7 @@ uint8_t World::findNPC(int xWhere, int yWhere)
       if ((xWhere == npcXWhere + 1) && (yWhere == npcYWhere))
         return i;
     }
-    else if (npc[i].x % 8 != 0)
+    else if (npc[i].y % 8 != 0)
     {
       if ((xWhere == npcXWhere) && (yWhere == npcYWhere + 1))
         return i;
