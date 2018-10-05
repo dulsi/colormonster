@@ -72,6 +72,25 @@ const uint8_t portraitLoc[] = { 1, 21, 24, 44};
 const char noItems[] = "You have no items.";
 const char noSwap[] = "You have no more monsters.";
 
+const uint8_t colorList[16][2] = {
+  {0x08,0x54},
+  {0x00,0x1f},
+  {0x58,0x81},
+  {0xf8,0xe0},
+  {0xf8,0x77},
+  {0x80,0x4c},
+  {0x7b,0xcf},
+  {0xff,0xff},
+  {0x27,0xff},
+  {0x04,0xb2},
+  {0x05,0xe0},
+  {0x13,0x02},
+  {0x0a,0x9f},
+  {0x0c,0x5f},
+  {0x52,0xe1},
+  {0xe7,0xe7}
+};
+
 class ColorRule
 {
   public:
@@ -469,9 +488,19 @@ void Painter::update()
     }
     else if ((btn & TAButton1) && (px > 50) && (py > 19) && (py < 62))
     {
-      color1 = _image_paint_data[(py * 48 + (px - 48)) * 2];
-      color2 = _image_paint_data[(py * 48 + (px - 48)) * 2 + 1];
-      buttonCoolDown = BUTTON_COOLDOWN;
+      if (px > 50)
+      {
+        if ((py >= 20) && ((py - 20) % 11 < 9) && ((px - 50) % 11 < 9))
+        {
+          int colorIdx = ((py - 20) / 11) * 4 + ((px - 50) / 11);
+          if (colorIdx < 16)
+          {
+            color1 = colorList[colorIdx][0];
+            color2 = colorList[colorIdx][1];
+            buttonCoolDown = BUTTON_COOLDOWN;
+          }
+        }
+      }
     }
     else if ((btn & TAButton1) && (px > 50) && (px < 68) && (py > 1) && (py < 18))
     {
@@ -531,6 +560,7 @@ void Painter::draw()
   display.startData();
   
   uint8_t lineBuffer[96 * 2];
+  int colorIdx = 0;
 
   for(int lines = 0; lines < 64; ++lines)
   {
@@ -547,7 +577,31 @@ void Painter::draw()
         lineBuffer[i * 2 * 2 + 3] = active->img[curLine * 48 * 2 + (zoomx + i) * 2 + 1];
       }
     }
-    memcpy(lineBuffer + 48 * 2, _image_paint_data + lines * 48 * 2,48*2);
+    if (lines < 2)
+      memset(lineBuffer + 48 * 2, 0, 48 * 2);
+    else if (lines < 18)
+      memcpy(lineBuffer + 48 * 2, _image_paint_data + (lines - 2) * 48 * 2,48*2);
+    else
+    {
+      if ((colorIdx < 16) && (lines >= 20) && ((lines - 20) % 11 < 9))
+      {
+        memset(lineBuffer + 48 * 2, 0, 3 * 2);
+        for (int i = 0; i < 4; ++i)
+        {
+          for (int x = 0; x < 9; ++x)
+          {
+            lineBuffer[(i * 11 + x + 51) * 2] = colorList[colorIdx + i][0];
+            lineBuffer[(i * 11 + x + 51) * 2 + 1] = colorList[colorIdx + i][1];
+          }
+          memset(lineBuffer + (i * 11 + 60) * 2, 0, 2 * 2);
+        }
+        memset(lineBuffer + 95 * 2, 0, 1 * 2);
+        if ((lines - 20) % 11 == 8)
+          colorIdx += 4;
+      }
+      else
+        memset(lineBuffer + 48 * 2, 0, 48 * 2);
+    }
     if ((lines == 1) || (lines == 18))
     {
       if (tool == TOOL_DRAW)
