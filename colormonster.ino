@@ -29,6 +29,7 @@ SdFile dataFile;
 #define STATE_BATTLELOST 5
 #define STATE_BATTLEWON 6
 #define STATE_TALKING 7
+#define STATE_TITLE 8
 
 #define BUTTON_COOLDOWN 5
 #define JOYSTICK_COOLDOWNSTART 4
@@ -54,8 +55,9 @@ SdFile dataFile;
 
 #define PATTERN_LINES 1
 #define PATTERN_SCALE 2
+#define PATTERN_COUNT 3
 
-int state = 0;
+int state = STATE_TITLE;
 int turn = 0;
 int buttonCoolDown = 0;
 int joystickCoolDown = 0;
@@ -66,6 +68,7 @@ int joystickCoolDownStart = JOYSTICK_COOLDOWNSTART;
 #define MONSTER_PARTYSIZE 1
 
 const uint8_t bottomRow[] = { 1, 48, 94, 63};
+const uint8_t startMenuRow[] = { 4, 31, 58, 46};
 uint8_t nameRow[] = { 28, 37, 94, 44};
 const uint8_t portraitLoc[] = { 1, 21, 24, 44};
 
@@ -116,6 +119,7 @@ class ColorMonster
     ColorMonster() : baseMonster(255), saved(false) { memset(img, 0, 64*48*2); }
     void init(uint8_t bm);
     void init(uint8_t bm, int count, const ColorRule *r);
+    void initRandom();
     void buildChoice(bool target, uint8_t &choiceEnd, char **choiceList, char *choiceString);
     void calculateColor();
 
@@ -230,6 +234,40 @@ void ColorMonster::init(uint8_t bm, int count, const ColorRule *r)
     part[i].part = i;
     part[i].strength = part[i].health = monsterType[baseMonster].part[i].strength;
   }
+}
+
+void ColorMonster::initRandom()
+{
+  int mon = random(0, COLMONSTERTYPE_COUNT);
+  ColorRule rules[20];
+  int ruleCount = 0;
+  for (int i = 0; i < 64 * 48; i++)
+  {
+    if (monsterType[mon].img[i] != 0xFF)
+    {
+      bool found = false;
+      for (int j = 0; j < ruleCount; j++)
+      {
+        if (rules[j].origColor == monsterType[mon].img[i])
+          found = true;
+      }
+      if (!found)
+      {
+        rules[ruleCount].instruct = random(0, PATTERN_COUNT);
+        rules[ruleCount].origColor = monsterType[mon].img[i];
+        for (int j = 0; j < 2; j++)
+        {
+          int c = random(0, 16);
+          rules[ruleCount].color[j][0] = colorList[c][0];
+          rules[ruleCount].color[j][1] = colorList[c][1];
+        }
+        ruleCount++;
+        if (ruleCount == 20)
+          break;
+      }
+    }
+  }
+  init(mon, ruleCount, rules);
 }
 
 void ColorMonster::buildChoice(bool target, uint8_t &choiceEnd, char **choiceList, char *choiceString)
@@ -855,6 +893,7 @@ class Dialog
     uint8_t process();
     void draw(int line, uint8_t lineBuffer[96 * 2]);
     void setOptions(uint8_t col, uint8_t c, const char **o);
+    void setRect(const uint8_t *r) { rect = r; }
 
   private:
     const uint8_t *rect;
@@ -1868,6 +1907,68 @@ const char *Battle::baseOption[4] = { "Attack", "Item", "Swap", "Run" };
 
 Battle battle;
 
+class Title
+{
+  public:
+    Title() {}
+    void init();
+    void update();
+    void draw();
+
+    static const char *baseOption[2];
+};
+
+void Title::init()
+{
+  choice.setRect(startMenuRow);
+  choice.setOptions(1, 2, baseOption);
+  opponent[0].initRandom();
+}
+
+void Title::update()
+{
+  turn++;
+  if (turn > 100)
+  {
+    turn = 0;
+    opponent[0].initRandom();
+  }
+  uint8_t c = choice.process();
+  if (c != CHOICE_NONE)
+  {
+    switch (c)
+    {
+      case 0:
+      case 1:
+        state = STATE_PAINT;
+        buttonCoolDown = BUTTON_COOLDOWN;
+        choice.setRect(startMenuRow);
+        break;
+    }
+  }
+}
+
+void Title::draw()
+{
+  display.goTo(0,0);
+  display.startData();
+
+  uint8_t lineBuffer[96 * 2];
+
+  for(int lines = 0; lines < 64; ++lines)
+  {
+    memcpy(lineBuffer, _image_title_data + (lines * 48 * 2), 48 * 2);
+    memcpy(lineBuffer + 48 * 2, opponent[0].img + (lines * 48 * 2), 48 * 2);
+    choice.draw(lines, lineBuffer);
+    display.writeBuffer(lineBuffer,96 * 2);
+  }
+  display.endTransfer();
+}
+
+const char *Title::baseOption[2] = { "Continue", "New Game" };
+
+Title title;
+
 unsigned long lastTime;
 
 void setup()
@@ -1903,12 +2004,17 @@ void setup()
       dataFile.close();
     }
   }
+  title.init();
 }
 
 void loop()
 {
   // put your main code here, to run repeatedly:
-  if ((state == STATE_PAINT) || (state == STATE_PAINTZOOM))
+  if (state == STATE_TITLE)
+  {
+    title.update();
+  }
+  else if ((state == STATE_PAINT) || (state == STATE_PAINTZOOM))
   {
     paint.update();
   }
@@ -1920,7 +2026,11 @@ void loop()
   {
     battle.update();
   }
-  if ((state == STATE_PAINT) || (state == STATE_PAINTZOOM))
+  if (state == STATE_TITLE)
+  {
+    title.draw();
+  }
+  else if ((state == STATE_PAINT) || (state == STATE_PAINTZOOM))
   {
     paint.draw();
   }
