@@ -19,12 +19,21 @@ Download the tinyscreensim. Run it with the command like:
 Now you should be able to run colormonster.
 
 # Thanks
-The Cateye image is based on the Cateye from Tuxemon by Cavalcadeur is
+The Cateye image is based on the Cateye from Tuxemon by Cavalcadeur. Image is
 licensed under CC-BY-SA 4.0. Transformed to black and white by Dennis Payne.
 
-The Weavifly image is based of the Weavifly from Tuzemon by Spalding004 is
-licensed under Creative Commons Attribution 4.0 International licence.
+The Weavifly image is based on the Weavifly from Tuxemon by Spalding004. Image
+is licensed under Creative Commons Attribution 4.0 International licence.
 Transformed to black and white by Dennis Payne.
+
+The Falcono image is based on the Falcono from Tuxemon. Original design and
+sprites by Catch Challenger. Catch Challenger is an open source project, with
+assets under Creative Commons Attribution. Transformed to black and white by
+Dennis Payne.
+
+The Sharpfin image is based on the Sharpfin from Tuxemon. Original design by
+Leo and extyrannomon. Sprites by Sanglorian. Image is licensed under CC-BY-SA
+4.0. Transformed to black and white by Dennis Payne.
 
 The font is ASCII Bitmap Font "oldschool" by domsson
 https://opengameart.org/content/ascii-bitmap-font-oldschool
