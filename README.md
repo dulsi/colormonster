@@ -35,6 +35,10 @@ The Sharpfin image is based on the Sharpfin from Tuxemon. Original design by
 Leo and extyrannomon. Sprites by Sanglorian. Image is licensed under CC-BY-SA
 4.0. Transformed to black and white by Dennis Payne.
 
+The Propellercat is based on the Propellercat from Tuxemon. Original idea by
+TheSplashDragon. Design and sprites by tamashihoshi. Image is licensed under
+CC-BY-SA 4.0. Transformed to black and white by Dennis Payne.
+
 The font is ASCII Bitmap Font "oldschool" by domsson
 https://opengameart.org/content/ascii-bitmap-font-oldschool
 
