@@ -63,7 +63,7 @@ int buttonCoolDown = 0;
 int joystickCoolDown = 0;
 int joystickCoolDownStart = JOYSTICK_COOLDOWNSTART;
 
-#define PART_NONE 255
+#define POWER_NONE 255
 
 #define MONSTER_PARTYSIZE 1
 
@@ -102,15 +102,14 @@ class ColorRule
     uint8_t color[2][2];
 };
 
-class ColorMonsterPart
+class ColorMonsterPower
 {
   public:
-    ColorMonsterPart() : part(PART_NONE) {}
+    ColorMonsterPower() : power(POWER_NONE) {}
 
-    uint8_t part;
+    uint8_t power;
     int color;
     uint8_t strength;
-    uint8_t health;
 };
 
 class ColorMonster
@@ -120,12 +119,13 @@ class ColorMonster
     void init(uint8_t bm);
     void init(uint8_t bm, int count, const ColorRule *r);
     void initRandom();
-    void buildChoice(bool target, uint8_t &choiceEnd, char **choiceList, char *choiceString);
+    void buildChoice(uint8_t &choiceEnd, char **choiceList, char *choiceString);
     void calculateColor();
 
     uint8_t baseMonster;
     unsigned char img[64*48*2];
-    ColorMonsterPart part[5];
+    int hp, maxHp;
+    ColorMonsterPower power[5];
     bool saved;
 };
 
@@ -148,9 +148,10 @@ void ColorMonster::init(uint8_t bm)
   }
   for (int i = 0; i < 2; i++)
   {
-    part[i].part = i;
-    part[i].strength = part[i].health = monsterType[baseMonster].part[i].strength;
+    power[i].power = i;
+    power[i].strength = monsterType[baseMonster].power[i].strength;
   }
+  hp = maxHp = monsterType[baseMonster].baseHp;
 }
 
 void ColorMonster::init(uint8_t bm, int count, const ColorRule *r)
@@ -231,9 +232,10 @@ void ColorMonster::init(uint8_t bm, int count, const ColorRule *r)
   }
   for (int i = 0; i < 2; i++)
   {
-    part[i].part = i;
-    part[i].strength = part[i].health = monsterType[baseMonster].part[i].strength;
+    power[i].power = i;
+    power[i].strength = monsterType[baseMonster].power[i].strength;
   }
+  hp = maxHp = monsterType[baseMonster].baseHp;
 }
 
 void ColorMonster::initRandom()
@@ -270,30 +272,19 @@ void ColorMonster::initRandom()
   init(mon, ruleCount, rules);
 }
 
-void ColorMonster::buildChoice(bool target, uint8_t &choiceEnd, char **choiceList, char *choiceString)
+void ColorMonster::buildChoice(uint8_t &choiceEnd, char **choiceList, char *choiceString)
 {
   choiceEnd = 0;
   int where = 0;
   for (int i = 0; i < 5; i++)
   {
-    if (part[i].part == PART_NONE)
+    if (power[i].power == POWER_NONE)
       break;
-    const ColorMonsterPartType &partType = monsterType[baseMonster].part[part[i].part];
-    if ((target) || (partType.type == PARTTYPE_CORE) || (partType.type == PARTTYPE_WEAPON))
-    {
-      choiceList[choiceEnd] = choiceString + where;
-      if ((i == 0) && (target))
-      {
-        strcpy(choiceString + where, "Body");
-        where += 5;
-      }
-      else
-      {
-        strcpy(choiceString + where, partType.name);
-        where += strlen(partType.name) + 1;
-      }
-      choiceEnd++;
-    }
+    const ColorMonsterPowerType &powerType = monsterType[baseMonster].power[power[i].power];
+    choiceList[choiceEnd] = choiceString + where;
+    strcpy(choiceString + where, powerType.name);
+    where += strlen(powerType.name) + 1;
+    choiceEnd++;
   }
 }
 
@@ -301,9 +292,9 @@ void ColorMonster::calculateColor()
 {
   for (int i = 0; i < 5; i++)
   {
-    if (part[i].part == PART_NONE)
+    if (power[i].power == POWER_NONE)
       break;
-    uint8_t region = monsterType[baseMonster].part[part[i].part].region;
+    uint8_t region = monsterType[baseMonster].power[power[i].power].region;
     const unsigned char *baseImg = monsterType[baseMonster].img;
     uint8_t endColor(0);
     int colors[100][2];
@@ -335,7 +326,7 @@ void ColorMonster::calculateColor()
       if (colors[k][1] > colors[max][1])
         max = k;
     }
-    part[i].color = colors[max][0];
+    power[i].color = colors[max][0];
   }
 }
 
@@ -727,6 +718,30 @@ class World
 
 World world(&startTown);
 
+class Battle
+{
+  public:
+    Battle() { }
+    void init();
+    void update();
+    void draw();
+    void chooseAction();
+    void runAction(int a);
+
+    struct {
+      int base : 3;
+      int subaction : 5;
+    } action[2];
+    uint8_t choiceEnd;
+    char *choiceList[10];
+    char choiceString[500];
+    bool message;
+    bool initiative[2];
+    static const char *baseOption[4];
+};
+
+Battle battle;
+
 class MessageBox
 {
   public:
@@ -1042,6 +1057,7 @@ void Dialog::draw(int line, uint8_t lineBuffer[96 * 2])
 void Dialog::setOptions(uint8_t col, uint8_t c, const char **o)
 {
   top = 0;
+  where = 0;
   column = col;
   count = c;
   option = o;
@@ -1244,6 +1260,7 @@ void World::update()
         buttonCoolDown = BUTTON_COOLDOWN;
         activeOpponent->init(0, 2, (const ColorRule *)jessCateyeRule);
         activeOpponent->calculateColor();
+        battle.init();
       }
       else if (btn == TAButton1)
       {
@@ -1646,35 +1663,11 @@ bool World::isTrainerIn(int xWhere, int yWhere)
   return false;
 }
 
-class Battle
-{
-  public:
-    Battle() { init(); }
-    void init();
-    void update();
-    void draw();
-    void chooseAction();
-    void runAction(int a);
-
-    struct {
-      int base : 3;
-      int subaction : 5;
-      int target : 5;
-    } action[2];
-    uint8_t choiceEnd;
-    char *choiceList[10];
-    char choiceString[500];
-    bool message;
-    bool initiative[2];
-    static const char *baseOption[4];
-};
-
 void Battle::init()
 {
   choice.setOptions(2, 4, baseOption);
   action[0].base = 0;
   action[0].subaction = 0;
-  action[0].target = 0;
   message = false;
   initiative[0] = false;
   initiative[1] = false;
@@ -1691,29 +1684,14 @@ void Battle::update()
       {
         if (c == CHOICE_BACK)
         {
-          if ((action[0].base == BASEOPTION_ATTACK) && (action[0].subaction != 0))
-          {
-            action[0].subaction = 0;
-            active->buildChoice(false, choiceEnd, choiceList, choiceString);
-            choice.setOptions(2, choiceEnd, (const char **)choiceList);
-          }
-          else
-          {
-            choice.setOptions(2, 4, baseOption);
-            action[0].base = 0;
-          }
+          choice.setOptions(2, 4, baseOption);
+          action[0].base = 0;
         }
         else
         {
           if ((action[0].base == BASEOPTION_ATTACK) && (action[0].subaction == 0))
           {
             action[0].subaction = c + 1;
-            activeOpponent->buildChoice(true, choiceEnd, choiceList, choiceString);
-            choice.setOptions(2, choiceEnd, (const char **)choiceList);
-          }
-          else if ((action[0].base == BASEOPTION_ATTACK) && (action[0].subaction != 0))
-          {
-            action[0].target = c + 1;
             message = false;
             initiative[0] = true;
             initiative[1] = true;
@@ -1731,7 +1709,7 @@ void Battle::update()
         else if (c == BASEOPTION_ATTACK)
         {
           action[0].base = c;
-          active->buildChoice(false, choiceEnd, choiceList, choiceString);
+          active->buildChoice(choiceEnd, choiceList, choiceString);
           choice.setOptions(2, choiceEnd, (const char **)choiceList);
         }
         else if (c == BASEOPTION_ITEM)
@@ -1764,32 +1742,32 @@ void Battle::update()
         {
           if ((!initiative[0]) && (!initiative[1]))
           {
-            if (active->part[0].health == 0)
+            if (active->hp == 0)
             {
               for (int i = 0; i < MONSTER_PARTYSIZE; i++)
               {
-                if (party[i].part[0].health > 0)
+                if (party[i].hp > 0)
                 {
                 }
               }
             }
-            if (active->part[0].health == 0)
+            if (active->hp == 0)
             {
               state = STATE_BATTLELOST;
               bottomMessage.setText("You have lost the battle.");
             }
-            if (activeOpponent->part[0].health == 0)
+            if (activeOpponent->hp == 0)
             {
               for (int i = 0; i < MONSTER_PARTYSIZE; i++)
               {
-                if (opponent[i].part[0].health > 0)
+                if (opponent[i].hp > 0)
                 {
                   activeOpponent = &opponent[i];
                   break;
                 }
               }
             }
-            if ((state == STATE_BATTLE) && (activeOpponent->part[0].health == 0))
+            if ((state == STATE_BATTLE) && (activeOpponent->hp == 0))
             {
               state = STATE_BATTLEWON;
               bottomMessage.setText("You have won the battle.");
@@ -1866,10 +1844,9 @@ void Battle::draw()
 
 void Battle::chooseAction()
 {
-  // Always base attack and body target. AI will be added later.
+  // Always base attack. AI will be added later.
   action[1].base = BASEOPTION_ATTACK;
   action[1].subaction = 1;
-  action[1].target = 1;
 }
 
 void Battle::runAction(int a)
@@ -1888,24 +1865,22 @@ void Battle::runAction(int a)
       mon[1] = active;
       mon[0] = activeOpponent;
     }
-    int damage = random(1, mon[0]->part[action[a].subaction - 1].strength + 1);
-    sprintf(choiceString, "%s hits for %d damage.", monsterType[mon[0]->baseMonster].part[mon[0]->part[action[a].subaction - 1].part].name, damage);
-    if (mon[1]->part[action[a].target - 1].health <= damage)
+    int damage = random(1, mon[0]->power[action[a].subaction - 1].strength + 1);
+    sprintf(choiceString, "%s hits for %d damage.", monsterType[mon[0]->baseMonster].power[mon[0]->power[action[a].subaction - 1].power].name, damage);
+    if (mon[1]->hp <= damage)
     {
-      mon[1]->part[action[a].target - 1].health = 0;
+      mon[1]->hp = 0;
       initiative[1 - a] = false;
     }
     else
     {
-      mon[1]->part[action[a].target - 1].health -= damage;
+      mon[1]->hp -= damage;
     }
     bottomMessage.setText(choiceString);
   }
 }
 
 const char *Battle::baseOption[4] = { "Attack", "Item", "Swap", "Run" };
-
-Battle battle;
 
 class Title
 {
@@ -1942,7 +1917,7 @@ void Title::update()
       case 1:
         state = STATE_PAINT;
         buttonCoolDown = BUTTON_COOLDOWN;
-        choice.setRect(startMenuRow);
+        choice.setRect(bottomRow);
         break;
     }
   }

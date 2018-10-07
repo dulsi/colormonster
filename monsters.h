@@ -6,13 +6,13 @@
 #include "sharpfin.h"
 #include "flacono.h"
 
-#define PARTTYPE_CORE 0
-#define PARTTYPE_WEAPON 1
-#define PARTTYPE_SHIELD 2
+#define POWERTYPE_MELEE 0
+#define POWERTYPE_RANGED 1
+#define POWERTYPE_AREA 2
 
 #define COLMONSTERTYPE_COUNT 4
 
-class ColorMonsterPartType
+class ColorMonsterPowerType
 {
   public:
     const char *name;
@@ -26,15 +26,16 @@ class ColorMonsterType
   public:
     const char *name;
     const unsigned char *img;
-    ColorMonsterPartType part[5];
+    int baseHp;
+    ColorMonsterPowerType power[5];
 };
 
 const ColorMonsterType monsterType[] =
 {
-  {"Cateye", _image_cateye_data, {{"Slam", 0x49, PARTTYPE_CORE, 6}, {"EyeZap", 0x6c, PARTTYPE_WEAPON, 6}, {"Kick", 0x0b, PARTTYPE_WEAPON, 8}, {"Tail", 0x10, PARTTYPE_WEAPON, 8}, {"Hearing", 0xe0, PARTTYPE_SHIELD, 4}}},
-  {"Weavifly", _image_weavifly_data, {{"Slam", 0x0b, PARTTYPE_CORE, 8}, {"Bite", 0x3f, PARTTYPE_WEAPON, 4}, {"Wind", 0x10, PARTTYPE_WEAPON, 6}, {"Tail", 0xe2, PARTTYPE_WEAPON, 8}, {"Belly", 0xfd, PARTTYPE_SHIELD, 4}}},
-  {"Sharpfin", _image_sharpfin_data, {{"Slam", 0x0b, PARTTYPE_CORE, 8}, {"Bite", 0x3f, PARTTYPE_WEAPON, 4}, {"Wind", 0x10, PARTTYPE_WEAPON, 6}, {"Tail", 0xe2, PARTTYPE_WEAPON, 8}, {"Belly", 0xfd, PARTTYPE_SHIELD, 4}}},
-  {"Flacono", _image_flacono_data, {{"Slam", 0x0b, PARTTYPE_CORE, 8}, {"Bite", 0x3f, PARTTYPE_WEAPON, 4}, {"Wind", 0x10, PARTTYPE_WEAPON, 6}, {"Tail", 0xe2, PARTTYPE_WEAPON, 8}, {"Belly", 0xfd, PARTTYPE_SHIELD, 4}}}
+  {"Cateye", _image_cateye_data, 13, {{"Slam", 0x49, POWERTYPE_MELEE, 6}, {"EyeZap", 0x6c, POWERTYPE_RANGED, 6}, {"Kick", 0x0b, POWERTYPE_MELEE, 8}, {"Tail", 0x10, POWERTYPE_MELEE, 8}, {"Sonic", 0xe0, POWERTYPE_AREA, 4}}},
+  {"Weavifly", _image_weavifly_data, 13, {{"Slam", 0x0b, POWERTYPE_MELEE, 8}, {"Bite", 0x3f, POWERTYPE_MELEE, 4}, {"Wind", 0x10, POWERTYPE_AREA, 6}, {"Sting", 0xe2, POWERTYPE_RANGED, 8}, {"Cocoon", 0xfd, POWERTYPE_MELEE, 4}}},
+  {"Sharpfin", _image_sharpfin_data, 13, {{"Slam", 0x0b, POWERTYPE_MELEE, 8}, {"Bite", 0x3f, POWERTYPE_MELEE, 4}, {"Wind", 0x10, POWERTYPE_MELEE, 6}, {"Tail", 0xe2, POWERTYPE_MELEE, 8}, {"Belly", 0xfd, POWERTYPE_MELEE, 4}}},
+  {"Flacono", _image_flacono_data, 13, {{"Slam", 0x0b, POWERTYPE_MELEE, 8}, {"Bite", 0x3f, POWERTYPE_MELEE, 4}, {"Wind", 0x10, POWERTYPE_MELEE, 6}, {"Tail", 0xe2, POWERTYPE_MELEE, 8}, {"Belly", 0xfd, POWERTYPE_MELEE, 4}}}
 };
 
 #endif
