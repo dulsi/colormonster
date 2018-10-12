@@ -344,6 +344,7 @@ class Trainer
     uint8_t icon;
     int x, y;
     uint8_t dir;
+    uint8_t secrets[10];
 };
 
 Trainer pc;
