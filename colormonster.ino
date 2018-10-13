@@ -3,11 +3,14 @@
 #include <SPI.h>
 #include <Wire.h>
 #include "TinyConfig.h"
+#include "dialogcommand.h"
 #include "monsters.h"
 #include "tileset.h"
 #include "portraits.h"
 #include "font.h"
 #include "ui.h"
+#include "uiobject.h"
+#include "npcdialog.h"
 
 #ifdef TINYARCADE_CONFIG
 #include "TinyArcade.h"
@@ -356,6 +359,7 @@ class NPC
     uint8_t icon;
     uint8_t portrait;
     int startX,startY;
+    const uint8_t *dialog;
 };
 
 class Area
@@ -406,7 +410,7 @@ const uint8_t startTownCollision[] = {
   0, 0, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
   0, 0, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
 };
-const NPC startTownNPC[] = { { "Jessica", 27, 1, 80, 40 } };
+const NPC startTownNPC[] = { { "Jessica", 27, 1, 80, 40, sampleDialog } };
 const ColorRule jessCateyeRule[] = {
  { 0, 0x49, { { 0x08, 0x54 }, { 0, 0 } } },
  { PATTERN_LINES, 0x03, { { 0x05, 0xe0 }, { 0x13, 0x02 } } }
@@ -743,19 +747,6 @@ class Battle
 
 Battle battle;
 
-class MessageBox
-{
-  public:
-    MessageBox(const uint8_t *r) : rect(r) {  }
-
-    void setText(const char *t);
-    void draw(int line, uint8_t lineBuffer[96 * 2]);
-
-  private:
-    const uint8_t *rect;
-    char text[7][16];
-};
-
 void MessageBox::setText(const char *t)
 {
   const char *where = t;
@@ -901,26 +892,7 @@ void Portrait::draw(int line, uint8_t lineBuffer[96 * 2])
 
 Portrait portrait(portraitLoc);
 
-class Dialog
-{
-  public:
-    Dialog(const uint8_t *r) : rect(r) {  }
-
-    uint8_t process();
-    void draw(int line, uint8_t lineBuffer[96 * 2]);
-    void setOptions(uint8_t col, uint8_t c, const char **o);
-    void setRect(const uint8_t *r) { rect = r; }
-
-  private:
-    const uint8_t *rect;
-    uint8_t top;
-    uint8_t where;
-    uint8_t column;
-    uint8_t count;
-    const char **option;
-};
-
-
+DialogContext dialogContext;
 Dialog choice(bottomRow);
 MessageBox nameMessage(nameRow);
 MessageBox bottomMessage(bottomRow);
@@ -977,7 +949,7 @@ uint8_t Dialog::process()
   {
     buttonCoolDown--;
   }
-  else
+  else if (btn)
   {
     buttonCoolDown = BUTTON_COOLDOWN;
     if (btn == TAButton1)
@@ -1080,25 +1052,50 @@ void World::update()
 {
   turn++;
   updateNPCs();
-  uint8_t btn = checkButton(TAButton1 | TAButton2);
-  uint8_t joyDir = checkJoystick(TAJoystickUp | TAJoystickDown | TAJoystickLeft | TAJoystickRight);
   if (state == STATE_TALKING)
   {
-    if (buttonCoolDown > 0)
+    if (dialogContext.choose)
     {
-      buttonCoolDown--;
+      uint8_t c = choice.process();
+      if (c != CHOICE_NONE)
+      {
+        if (!dialogContext.run(c))
+        {
+          state = STATE_WORLD;
+          buttonCoolDown = BUTTON_COOLDOWN;
+          for (int i = 0; i < currentArea->countNPC; i++)
+          {
+            if ((npc[i].dir & DIRECTION_PAUSE) == DIRECTION_PAUSE)
+            {
+              npc[i].dir = npc[i].dir & (~DIRECTION_PAUSE);
+            }
+          }
+        }
+      }
     }
     else
     {
-      if (btn == TAButton1)
+      uint8_t btn = checkButton(TAButton1 | TAButton2);
+      uint8_t joyDir = checkJoystick(TAJoystickUp | TAJoystickDown | TAJoystickLeft | TAJoystickRight);
+      if (buttonCoolDown > 0)
       {
-        state = STATE_WORLD;
-        buttonCoolDown = BUTTON_COOLDOWN;
-        for (int i = 0; i < currentArea->countNPC; i++)
+        buttonCoolDown--;
+      }
+      else
+      {
+        if (btn == TAButton1)
         {
-          if ((npc[i].dir & DIRECTION_PAUSE) == DIRECTION_PAUSE)
+          buttonCoolDown = BUTTON_COOLDOWN;
+          if (!dialogContext.run())
           {
-            npc[i].dir = npc[i].dir & (~DIRECTION_PAUSE);
+            state = STATE_WORLD;
+            for (int i = 0; i < currentArea->countNPC; i++)
+            {
+              if ((npc[i].dir & DIRECTION_PAUSE) == DIRECTION_PAUSE)
+              {
+                npc[i].dir = npc[i].dir & (~DIRECTION_PAUSE);
+              }
+            }
           }
         }
       }
@@ -1106,6 +1103,8 @@ void World::update()
   }
   else
   {
+    uint8_t btn = checkButton(TAButton1 | TAButton2);
+    uint8_t joyDir = checkJoystick(TAJoystickUp | TAJoystickDown | TAJoystickLeft | TAJoystickRight);
     if (joystickCoolDown > 0)
     {
       joystickCoolDown--;
@@ -1362,11 +1361,14 @@ void World::update()
             if (who != 255)
             {
               npc[who].dir |= DIRECTION_PAUSE;
-              state = STATE_TALKING;
-              nameRow[2] = nameRow[0] + strlen(currentArea->npc[who].name) * 6;
-              nameMessage.setText(currentArea->npc[who].name);
-              bottomMessage.setText("Hello.");
-              portrait.setPortrait(currentArea->npc[who].portrait);
+              dialogContext.init(currentArea->npc[who].dialog);
+              if (dialogContext.run())
+              {
+                state = STATE_TALKING;
+                nameRow[2] = nameRow[0] + strlen(currentArea->npc[who].name) * 6;
+                nameMessage.setText(currentArea->npc[who].name);
+                portrait.setPortrait(currentArea->npc[who].portrait);
+              }
             }
             else
               printf("Error: Should not be here\n");
@@ -1592,7 +1594,10 @@ void World::draw()
     {
       portrait.draw(lines, lineBuffer);
       nameMessage.draw(lines, lineBuffer);
-      bottomMessage.draw(lines, lineBuffer);
+      if (dialogContext.message)
+        bottomMessage.draw(lines, lineBuffer);
+      if (dialogContext.choose)
+        choice.draw(lines, lineBuffer);
     }
     display.writeBuffer(lineBuffer,96 * 2);
   }
@@ -1666,6 +1671,7 @@ bool World::isTrainerIn(int xWhere, int yWhere)
 
 void Battle::init()
 {
+  choice.setRect(bottomRow);
   choice.setOptions(2, 4, baseOption);
   action[0].base = 0;
   action[0].subaction = 0;
@@ -1918,7 +1924,6 @@ void Title::update()
       case 1:
         state = STATE_PAINT;
         buttonCoolDown = BUTTON_COOLDOWN;
-        choice.setRect(bottomRow);
         break;
     }
   }

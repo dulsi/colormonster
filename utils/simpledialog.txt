@@ -1,0 +1,5 @@
+SAY Do you want to battle?
+CHOOSE_YESNO
+IF yes THEN
+ BATTLE
+FI
