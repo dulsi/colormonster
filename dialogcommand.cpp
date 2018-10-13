@@ -41,7 +41,8 @@ bool DialogContext::run(uint8_t c)
         }
         else
         {
-          currentCommand = *((uint16_t*)(dialog + currentCommand));
+          int tmp = (dialog[currentCommand + 1] << 8) + dialog[currentCommand];
+          currentCommand = tmp;
         }
         break;
       case COMMAND_BATTLE:
@@ -52,6 +53,12 @@ bool DialogContext::run(uint8_t c)
         battle.init();
         return true;
         break;
+      case COMMAND_JUMP:
+      {
+        int tmp = (dialog[currentCommand + 1] << 8) + dialog[currentCommand];
+        currentCommand = tmp;
+        break;
+      }
       default:
         return false;
         break;
