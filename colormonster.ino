@@ -89,6 +89,15 @@ const uint8_t colorList[16][2] = {
   {0xe7,0xe7}
 };
 
+const uint8_t tilesetCollision[] = {
+  0, 1, 1, 1, 1, 1, 1, 1,
+  0, 1, 1, 1, 1, 1, 1, 1,
+  1, 1, 1, 0, 1, 1, 1, 1,
+  1, 1, 1, 1, 0, 0, 1, 1,
+  0, 1, 1, 1, 1, 1, 1, 1,
+  1, 1, 1, 1, 1, 1, 1, 1
+};
+
 class ColorRule
 {
   public:
@@ -370,18 +379,43 @@ class NPC
     const NPCMonster *monsters;
 };
 
+class Portal
+{
+  public:
+    int locX, locY;
+    uint8_t area;
+    int startX, startY;
+};
+
 class Area
 {
   public:
-    Area(uint8_t x, uint8_t y, const uint8_t *d, const uint8_t *c, uint8_t cNPC, const NPC *n) : xSize(x), ySize(y), data(d), collision(c), countNPC(cNPC), npc(n) {}
+    Area(uint8_t x, uint8_t y, const uint8_t *d, uint8_t cNPC, const NPC *n, uint8_t cPortal, const Portal *p) : xSize(x), ySize(y), data(d), countNPC(cNPC), npc(n), countPortal(cPortal), portals(p) {}
 
     uint8_t xSize, ySize;
     const uint8_t *data;
-    const uint8_t *collision;
     uint8_t countNPC;
     const NPC *npc;
+    uint8_t countPortal;
+    const Portal *portals;
 };
 
+Portal hospitalPortal[] = { { 8 * 8, 9 * 8, 0, 17 * 8, 12 * 8} };
+const uint8_t hospitalMap[] = {
+ 31,  31,  31,  31,  31,  31,  31,  31,  31,  31,  31,  31,  31,  31,  31,  31,  31,
+ 31,   0,  40,   0,  31,   0,  38,   0,   0,   0,  38,   0,  31,   0,  40,   0,  31,
+ 31,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,  31,
+ 31,   0,   0,   0,  31,   0,   0,   0,   0,   0,   0,   0,  31,   0,   0,   0,  31,
+ 31,  31,  31,  31,  31,   0,   0,   0,   0,   0,   0,   0,  31,  31,  31,  31,  31,
+ 31,   0,  48,   0,  31,   0,   0,  41,   0,  35,  41,   0,  31,   0,  40,   0,  31,
+ 31,   0,   0,   0,   0,   0,   0,  41,  41,  41,  41,   0,   0,   0,   0,   0,  31,
+ 31,   0,   0,   0,  31,   0,   0,   0,   0,   0,   0,   0,  31,   0,   0,   0,  31,
+ 31,  31,  31,  31,  31,   0,   0,   0,   0,   0,   0,   0,  31,  31,  31,  31,  31,
+255, 255, 255, 255,  31,  31,  31,  31,   0,  39,  31,  31,  31, 255, 255, 255, 255
+};
+const Area hospital(17, 10, hospitalMap, 0, NULL, 1, hospitalPortal);
+
+Portal startTownPortal[] = { { 17 * 8, 11 * 8, 1, 8 * 8, 8 * 8} };
 const uint8_t startTownMap[] = {
   0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,31,21,31,21,21,21,31,21,31,
   0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,31, 9, 0, 9, 0, 0, 9, 9,31,
@@ -400,24 +434,6 @@ const uint8_t startTownMap[] = {
   0, 0,18,17,15,15, 8, 0, 0, 0, 0, 0, 0, 0, 0, 0, 9, 0, 0, 0, 0, 0, 0, 0,
   0, 0,18,17,17,17,19, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
 };
-const uint8_t startTownCollision[] = {
-  0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1,
-  0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 1,
-  0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 1,
-  0, 0, 0, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 1,
-  0, 0, 0, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 1,
-  0, 0, 0, 1, 1, 0, 1, 1, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 1,
-  0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 0, 1, 1, 1, 1,
-  1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-  1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0,
-  0, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 0, 1, 0, 0, 0,
-  0, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 0, 1, 0, 0, 0,
-  0, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 0, 1, 0, 0, 0, 0, 0,
-  0, 0, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-  0, 0, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-  0, 0, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-  0, 0, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-};
 const ColorRule jessCateyeRule[] = {
  { 0, 0x49, { { 0x08, 0x54 }, { 0, 0 } } },
  { PATTERN_LINES, 0x03, { { 0x05, 0xe0 }, { 0x13, 0x02 } } }
@@ -426,7 +442,12 @@ const NPCMonster jessCateye[] = {
   {0, 2, jessCateyeRule}
 };
 const NPC startTownNPC[] = { { "Jessica", 27, 1, 80, 40, sampleDialog, 1, jessCateye } };
-const Area startTown(24, 16, startTownMap, startTownCollision, 1, startTownNPC);
+const Area startTown(24, 16, startTownMap, 1, startTownNPC, 1, startTownPortal);
+
+const Area *areaList[] = {
+  &startTown,
+  &hospital
+};
 
 #define TOOL_DRAW 0
 #define TOOL_FLOOD 1
@@ -717,6 +738,7 @@ class World
   public:
     World(const Area *cArea) : currentArea(cArea) { init(); }
     void init();
+    void buildCollision();
     void update();
     void updateNPCs();
     void draw();
@@ -1027,13 +1049,26 @@ void Dialog::setOptions(uint8_t col, uint8_t c, const char **o)
 
 void World::init()
 {
-  memcpy(collision, currentArea->collision, currentArea->xSize * currentArea->ySize);
+  buildCollision();
   for (int i = 0; i < currentArea->countNPC; i++)
   {
     npc[i].x = currentArea->npc[i].startX;
     npc[i].y = currentArea->npc[i].startY;
     npc[i].dir = DIRECTION_NONE;
     collision[currentArea->xSize * (npc[i].y / 8) + (npc[i].x / 8)] = COLLISION_NPC;
+  }
+}
+
+void World::buildCollision()
+{
+  for (int i = 0; i < currentArea->xSize * currentArea->ySize; i++)
+  {
+    if (currentArea->data[i] == 0)
+     collision[i] = 0;
+    else if (currentArea->data[i] == 255)
+     collision[i] = 1;
+    else
+     collision[i] = tilesetCollision[currentArea->data[i] - 1];
   }
 }
 
@@ -1100,6 +1135,8 @@ void World::update()
     }
     else
     {
+      int origX = pc.x;
+      int origY = pc.y;
       if ((joyDir & TAJoystickUp) && (pc.y > 0))
       {
         pc.dir = DIRECTION_UP;
@@ -1235,6 +1272,20 @@ void World::update()
         }
         else
           pc.x++;
+      }
+      if ((origX != pc.x) || (origY != pc.y))
+      {
+        for (int i = 0; i < currentArea->countPortal; i++)
+        {
+          if ((pc.x == currentArea->portals[i].locX) && (pc.y == currentArea->portals[i].locY))
+          {
+            pc.x = currentArea->portals[i].startX;
+            pc.y = currentArea->portals[i].startY;
+            currentArea = areaList[currentArea->portals[i].area];
+            init();
+            break;
+          }
+        }
       }
     }
     if (buttonCoolDown > 0)
@@ -1520,6 +1571,8 @@ void World::draw()
         {
           if (currentTile == 0)
             memset(lineBuffer + x * 2, 255, (8 - init) * 2);
+          else if (currentTile == 255)
+            memset(lineBuffer + x * 2, 0, 8 * 2);
           else
             memcpy(lineBuffer + x * 2, getTileData(currentTile, currentY % 8) + (init * 2), (8 - init) * 2);
           x += 8 - init;
@@ -1536,6 +1589,8 @@ void World::draw()
         currentTile = getTile(startX + x, currentY);
         if (currentTile == 0)
           memset(lineBuffer + x * 2, 255, 8 * 2);
+        else if (currentTile == 255)
+          memset(lineBuffer + x * 2, 0, 8 * 2);
         else
           memcpy(lineBuffer + x * 2, getTileData(currentTile, currentY % 8), 8 * 2);
         x += 8;
@@ -1553,6 +1608,8 @@ void World::draw()
           currentTile = getTile(startX + x, currentY);
           if (currentTile == 0)
             memset(lineBuffer + x * 2, 255, init * 2);
+        else if (currentTile == 255)
+          memset(lineBuffer + x * 2, 0, 8 * 2);
           else
             memcpy(lineBuffer + x * 2, getTileData(currentTile, currentY % 8), init * 2);
         }

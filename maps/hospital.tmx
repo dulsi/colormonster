@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<map version="1.0" tiledversion="1.1.2" orientation="orthogonal" renderorder="right-down" width="17" height="10" tilewidth="8" tileheight="8" infinite="0" nextobjectid="1">
+ <tileset firstgid="1" source="blank.tsx"/>
+ <tileset firstgid="3" source="1bit_tileset_8x8.tsx"/>
+ <layer name="Tile Layer 1" width="17" height="10">
+  <data encoding="csv">
+33,33,33,33,33,33,33,33,33,33,33,33,33,33,33,33,33,
+33,1,42,1,33,1,40,1,1,1,40,1,33,1,42,1,33,
+33,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,33,
+33,1,1,1,33,1,1,1,1,1,1,1,33,1,1,1,33,
+33,33,33,33,33,1,1,1,1,1,1,1,33,33,33,33,33,
+33,1,50,1,33,1,1,43,1,37,43,1,33,1,42,1,33,
+33,1,1,1,1,1,1,43,43,43,43,1,1,1,1,1,33,
+33,1,1,1,33,1,1,1,1,1,1,1,33,1,1,1,33,
+33,33,33,33,33,1,1,1,1,1,1,1,33,33,33,33,33,
+2,2,2,2,33,33,33,33,1,41,33,33,33,2,2,2,2
+</data>
+ </layer>
+</map>
