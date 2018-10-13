@@ -3,6 +3,7 @@
 #include <SPI.h>
 #include <Wire.h>
 #include "TinyConfig.h"
+#include "battle.h"
 #include "dialogcommand.h"
 #include "monsters.h"
 #include "tileset.h"
@@ -23,16 +24,6 @@ TinyScreen display = TinyScreen(TinyScreenPlus);
 
 SdFat sd;
 SdFile dataFile;
-
-#define STATE_PAINT 0
-#define STATE_PAINTZOOM 1
-#define STATE_WORLD 2
-#define STATE_BATTLECHOICE 3
-#define STATE_BATTLE 4
-#define STATE_BATTLELOST 5
-#define STATE_BATTLEWON 6
-#define STATE_TALKING 7
-#define STATE_TITLE 8
 
 #define BUTTON_COOLDOWN 5
 #define JOYSTICK_COOLDOWNSTART 4
@@ -61,6 +52,7 @@ SdFile dataFile;
 #define PATTERN_COUNT 3
 
 int state = STATE_TITLE;
+int prevState = STATE_WORLD;
 int turn = 0;
 int buttonCoolDown = 0;
 int joystickCoolDown = 0;
@@ -105,6 +97,14 @@ class ColorRule
     uint8_t color[2][2];
 };
 
+class NPCMonster
+{
+  public:
+    uint8_t baseMonster;
+    uint8_t ruleCount;
+    const ColorRule *rules;
+};
+
 class ColorMonsterPower
 {
   public:
@@ -120,6 +120,7 @@ class ColorMonster
   public:
     ColorMonster() : baseMonster(255), saved(false) { memset(img, 0, 64*48*2); }
     void init(uint8_t bm);
+    void init(const NPCMonster m);
     void init(uint8_t bm, int count, const ColorRule *r);
     void initRandom();
     void buildChoice(uint8_t &choiceEnd, char **choiceList, char *choiceString);
@@ -155,6 +156,11 @@ void ColorMonster::init(uint8_t bm)
     power[i].strength = monsterType[baseMonster].power[i].strength;
   }
   hp = maxHp = monsterType[baseMonster].baseHp;
+}
+
+void ColorMonster::init(const NPCMonster m)
+{
+  init(m.baseMonster, m.ruleCount, m.rules);
 }
 
 void ColorMonster::init(uint8_t bm, int count, const ColorRule *r)
@@ -360,6 +366,8 @@ class NPC
     uint8_t portrait;
     int startX,startY;
     const uint8_t *dialog;
+    uint8_t monsterCount;
+    const NPCMonster *monsters;
 };
 
 class Area
@@ -410,11 +418,14 @@ const uint8_t startTownCollision[] = {
   0, 0, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
   0, 0, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
 };
-const NPC startTownNPC[] = { { "Jessica", 27, 1, 80, 40, sampleDialog } };
 const ColorRule jessCateyeRule[] = {
  { 0, 0x49, { { 0x08, 0x54 }, { 0, 0 } } },
  { PATTERN_LINES, 0x03, { { 0x05, 0xe0 }, { 0x13, 0x02 } } }
 };
+const NPCMonster jessCateye[] = {
+  {0, 2, jessCateyeRule}
+};
+const NPC startTownNPC[] = { { "Jessica", 27, 1, 80, 40, sampleDialog, 1, jessCateye } };
 const Area startTown(24, 16, startTownMap, startTownCollision, 1, startTownNPC);
 
 #define TOOL_DRAW 0
@@ -722,28 +733,6 @@ class World
 };
 
 World world(&startTown);
-
-class Battle
-{
-  public:
-    Battle() { }
-    void init();
-    void update();
-    void draw();
-    void chooseAction();
-    void runAction(int a);
-
-    struct {
-      int base : 3;
-      int subaction : 5;
-    } action[2];
-    uint8_t choiceEnd;
-    char *choiceList[10];
-    char choiceString[500];
-    bool message;
-    bool initiative[2];
-    static const char *baseOption[4];
-};
 
 Battle battle;
 
@@ -1366,6 +1355,12 @@ void World::update()
               {
                 state = STATE_TALKING;
                 nameRow[2] = nameRow[0] + strlen(currentArea->npc[who].name) * 6;
+                for (int i = 0; i < currentArea->npc[who].monsterCount; i++)
+                {
+                  opponent[i].init(currentArea->npc[who].monsters[i]);
+                  opponent[i].calculateColor();
+                }
+                activeOpponent = &opponent[0];
                 nameMessage.setText(currentArea->npc[who].name);
                 portrait.setPortrait(currentArea->npc[who].portrait);
               }
@@ -1817,7 +1812,22 @@ void Battle::update()
     {
       if ((btn == TAButton1) || (btn == TAButton2))
       {
-        state = STATE_WORLD;
+        state = prevState;
+        prevState = STATE_WORLD;
+        if (state == STATE_TALKING)
+        {
+          if (!dialogContext.run())
+          {
+            state = STATE_WORLD;
+            for (int i = 0; i < world.currentArea->countNPC; i++)
+            {
+              if ((world.npc[i].dir & DIRECTION_PAUSE) == DIRECTION_PAUSE)
+              {
+                world.npc[i].dir = world.npc[i].dir & (~DIRECTION_PAUSE);
+              }
+            }
+          }
+        }
         buttonCoolDown = BUTTON_COOLDOWN;
       }
     }

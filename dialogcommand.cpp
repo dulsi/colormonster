@@ -1,6 +1,7 @@
 #include <TinyScreen.h>
 #include <SPI.h>
 #include <cstring>
+#include "battle.h"
 #include "dialogcommand.h"
 #include "uiobject.h"
 
@@ -44,8 +45,12 @@ bool DialogContext::run(uint8_t c)
         }
         break;
       case COMMAND_BATTLE:
-        printf("Battle (Not implemented)\n");
-        return false;
+        choose = false;
+        message = false;
+        prevState = state;
+        state = STATE_BATTLECHOICE;
+        battle.init();
+        return true;
         break;
       default:
         return false;

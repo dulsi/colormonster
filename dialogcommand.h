@@ -18,3 +18,16 @@ class DialogContext
     bool choose;
 };
 
+#define STATE_PAINT 0
+#define STATE_PAINTZOOM 1
+#define STATE_WORLD 2
+#define STATE_BATTLECHOICE 3
+#define STATE_BATTLE 4
+#define STATE_BATTLELOST 5
+#define STATE_BATTLEWON 6
+#define STATE_TALKING 7
+#define STATE_TITLE 8
+
+extern int state;
+extern int prevState;
+
