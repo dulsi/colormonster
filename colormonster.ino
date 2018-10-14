@@ -354,7 +354,10 @@ class Area
     const Portal *portals;
 };
 
-const NPC hospitalNPC[] = { { "Doctor", 27, 5, 8 * 8, 5 * 8, doctorDialog, 0, NULL } };
+const NPC hospitalNPC[] = {
+  { "Dr. Ava", 27, 5, 8 * 8, 5 * 8, doctorDialog, 0, NULL },
+  { "Kirk", 28, 0, 4 * 8, 6 * 8, worriedDialog, 0, NULL }
+};
 Portal hospitalPortal[] = { { 8 * 8, 9 * 8, 0, 17 * 8, 12 * 8} };
 const uint8_t hospitalMap[] = {
  31,  31,  31,  31,  31,  31,  31,  31,  31,  31,  31,  31,  31,  31,  31,  31,  31,
@@ -368,7 +371,7 @@ const uint8_t hospitalMap[] = {
  31,  31,  31,  31,  31,   0,   0,   0,   0,   0,   0,   0,  31,  31,  31,  31,  31,
 255, 255, 255, 255,  31,  31,  31,  31,   0,  39,  31,  31,  31, 255, 255, 255, 255
 };
-const Area hospital(17, 10, hospitalMap, 1, hospitalNPC, 1, hospitalPortal);
+const Area hospital(17, 10, hospitalMap, 2, hospitalNPC, 1, hospitalPortal);
 
 Portal startTownPortal[] = { { 17 * 8, 11 * 8, 1, 8 * 8, 8 * 8} };
 const uint8_t startTownMap[] = {

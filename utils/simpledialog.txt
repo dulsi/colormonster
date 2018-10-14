@@ -15,3 +15,7 @@ IF yes THEN
 ELSE
  SAY That is always good to hear.
 FI
+
+[worriedDialog]
+SAY I want to battle but...
+SAY my cateye is very sick.
