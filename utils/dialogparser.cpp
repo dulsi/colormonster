@@ -2,6 +2,7 @@
 #include <string>
 #include <cstring>
 #include <fstream>
+#include <vector>
 #include "../dialogcommand.h"
 
 static inline void ltrim(std::string &s)
@@ -26,12 +27,62 @@ static inline void trim(std::string &s)
     rtrim(s);
 }
 
+class DialogEntry
+{
+ public:
+  DialogEntry(const std::string &n, int l, uint8_t *bc);
+  ~DialogEntry();
+  void printHeader();
+
+  std::string name;
+  int len;
+  uint8_t *bytecode;
+};
+
+DialogEntry::DialogEntry(const std::string &n, int l, uint8_t *bc)
+: name(n), len(l)
+{
+ bytecode = new uint8_t[len];
+ memcpy(bytecode, bc, len);
+}
+
+DialogEntry::~DialogEntry()
+{
+ delete [] bytecode;
+}
+
+void DialogEntry::printHeader()
+{
+ printf("const uint8_t %s[] = {\n0x%s%x", name.c_str(), ((bytecode[0] < 16) ? "0" : ""), bytecode[0]);
+ for (int i = 1; i < len; i++)
+ {
+  printf(", ");
+  if (i % 10 == 0)
+   printf("\n");
+  printf("0x%s%x", ((bytecode[i] < 16) ? "0" : ""), bytecode[i]);
+ }
+ printf(", 0x00\n};\n");
+}
+
+std::vector<DialogEntry*> dialogList;
+
 std::string parseDialog(std::ifstream &file, uint8_t *dialogResult, int &current)
 {
+ std::string name;
  std::string line;
  while( std::getline( file, line ) )   
  {
   trim(line);
+  if ((line.length() > 0) && (line[0] == '['))
+  {
+   if (!name.empty())
+   {
+    dialogList.push_back(new DialogEntry(name, current, dialogResult));
+   }
+   current = 0;
+   name = line.c_str() + 1;
+   name.erase(name.length() - 1);
+  }
   if (0 == std::strncmp(line.c_str(), "SAY", 3))
   {
    dialogResult[current] = DIALOG_SAY;
@@ -58,10 +109,10 @@ std::string parseDialog(std::ifstream &file, uint8_t *dialogResult, int &current
    std::string endTag = parseDialog(file, dialogResult, current);
    if (endTag == "ELSE")
    {
-    *((uint16_t *)(dialogResult + jumpLoc)) = current;
-    dialogResult[current] = COMMAND_JUMP;
-    jumpLoc = current;
+    dialogResult[current++] = COMMAND_JUMP;
     current += 2;
+    *((uint16_t *)(dialogResult + jumpLoc)) = current;
+    jumpLoc = current - 2;
     endTag = parseDialog(file, dialogResult, current);
    }
    *((uint16_t *)(dialogResult + jumpLoc)) = current;
@@ -79,6 +130,15 @@ std::string parseDialog(std::ifstream &file, uint8_t *dialogResult, int &current
    dialogResult[current] = COMMAND_BATTLE;
    current++;
   }
+  else if (0 == std::strncmp(line.c_str(), "HEALALL", 6))
+  {
+   dialogResult[current] = COMMAND_HEALALL;
+   current++;
+  }
+ }
+ if (!name.empty())
+ {
+  dialogList.push_back(new DialogEntry(name, current, dialogResult));
  }
  return "";
 }
@@ -91,13 +151,9 @@ int main(int argc, char *argv[])
  std::string line;
  int current = 0;
  parseDialog(file, dialogResult, current);
- printf("{\n0x%s%x", ((dialogResult[0] < 16) ? "0" : ""), dialogResult[0]);
- for (int i = 1; i < current; i++)
+ for (int i = 0; i < dialogList.size(); i++)
  {
-  printf(", ");
-  if (i % 10 == 0)
-   printf("\n");
-  printf("0x%s%x", ((dialogResult[i] < 16) ? "0" : ""), dialogResult[i]);
+  dialogList[i]->printHeader();
+  delete dialogList[i];
  }
- printf(", 0x00\n}\n");
 }

@@ -2,6 +2,7 @@
 #include <SPI.h>
 #include <cstring>
 #include "battle.h"
+#include "colormonster.h"
 #include "dialogcommand.h"
 #include "uiobject.h"
 
@@ -26,6 +27,7 @@ bool DialogContext::run(uint8_t c)
         bottomMessage.setText((const char *)(dialog + currentCommand));
         currentCommand += std::strlen((const char *)(dialog + currentCommand)) + 1;
         message = true;
+        choose = false;
         return true;
         break;
       case DIALOG_CHOOSE_YESNO:
@@ -59,6 +61,12 @@ bool DialogContext::run(uint8_t c)
         currentCommand = tmp;
         break;
       }
+      case COMMAND_HEALALL:
+        for (int i = 0; i < MONSTER_PARTYSIZE; i++)
+        {
+          party[i].hp = party[i].maxHp;
+        }
+        break;
       default:
         return false;
         break;

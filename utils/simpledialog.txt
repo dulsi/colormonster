@@ -1,5 +1,17 @@
+[sampleDialog]
 SAY Do you want to battle?
 CHOOSE_YESNO
 IF yes THEN
  BATTLE
+FI
+
+[doctorDialog]
+SAY Are your monsters hurt?
+CHOOSE_YESNO
+IF yes THEN
+ SAY We will take care of them.
+ HEALALL
+ SAY Your monsters are healed.
+ELSE
+ SAY That is always good to hear.
 FI

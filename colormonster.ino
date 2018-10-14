@@ -9,6 +9,7 @@
 #include "tileset.h"
 #include "portraits.h"
 #include "font.h"
+#include "colormonster.h"
 #include "ui.h"
 #include "uiobject.h"
 #include "npcdialog.h"
@@ -58,10 +59,6 @@ int buttonCoolDown = 0;
 int joystickCoolDown = 0;
 int joystickCoolDownStart = JOYSTICK_COOLDOWNSTART;
 
-#define POWER_NONE 255
-
-#define MONSTER_PARTYSIZE 1
-
 const uint8_t bottomRow[] = { 1, 48, 94, 63};
 const uint8_t startMenuRow[] = { 4, 31, 58, 46};
 uint8_t nameRow[] = { 28, 37, 94, 44};
@@ -98,49 +95,6 @@ const uint8_t tilesetCollision[] = {
   1, 1, 1, 1, 1, 1, 1, 1
 };
 
-class ColorRule
-{
-  public:
-    uint8_t instruct;
-    unsigned char origColor;
-    uint8_t color[2][2];
-};
-
-class NPCMonster
-{
-  public:
-    uint8_t baseMonster;
-    uint8_t ruleCount;
-    const ColorRule *rules;
-};
-
-class ColorMonsterPower
-{
-  public:
-    ColorMonsterPower() : power(POWER_NONE) {}
-
-    uint8_t power;
-    int color;
-    uint8_t strength;
-};
-
-class ColorMonster
-{
-  public:
-    ColorMonster() : baseMonster(255), saved(false) { memset(img, 0, 64*48*2); }
-    void init(uint8_t bm);
-    void init(const NPCMonster m);
-    void init(uint8_t bm, int count, const ColorRule *r);
-    void initRandom();
-    void buildChoice(uint8_t &choiceEnd, char **choiceList, char *choiceString);
-    void calculateColor();
-
-    uint8_t baseMonster;
-    unsigned char img[64*48*2];
-    int hp, maxHp;
-    ColorMonsterPower power[5];
-    bool saved;
-};
 
 void ColorMonster::init(uint8_t bm)
 {
@@ -400,6 +354,7 @@ class Area
     const Portal *portals;
 };
 
+const NPC hospitalNPC[] = { { "Doctor", 27, 5, 8 * 8, 5 * 8, doctorDialog, 0, NULL } };
 Portal hospitalPortal[] = { { 8 * 8, 9 * 8, 0, 17 * 8, 12 * 8} };
 const uint8_t hospitalMap[] = {
  31,  31,  31,  31,  31,  31,  31,  31,  31,  31,  31,  31,  31,  31,  31,  31,  31,
@@ -413,7 +368,7 @@ const uint8_t hospitalMap[] = {
  31,  31,  31,  31,  31,   0,   0,   0,   0,   0,   0,   0,  31,  31,  31,  31,  31,
 255, 255, 255, 255,  31,  31,  31,  31,   0,  39,  31,  31,  31, 255, 255, 255, 255
 };
-const Area hospital(17, 10, hospitalMap, 0, NULL, 1, hospitalPortal);
+const Area hospital(17, 10, hospitalMap, 1, hospitalNPC, 1, hospitalPortal);
 
 Portal startTownPortal[] = { { 17 * 8, 11 * 8, 1, 8 * 8, 8 * 8} };
 const uint8_t startTownMap[] = {
