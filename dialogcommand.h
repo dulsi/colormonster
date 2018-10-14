@@ -28,6 +28,7 @@ class DialogContext
 #define STATE_BATTLEWON 6
 #define STATE_TALKING 7
 #define STATE_TITLE 8
+#define STATE_MENU 9
 
 extern int state;
 extern int prevState;

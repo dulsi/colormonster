@@ -43,6 +43,10 @@ SdFile dataFile;
 #define CHOICE_NONE 255
 #define CHOICE_BACK 254
 
+#define MENUOPTION_MONSTERS 1
+#define MENUOPTION_ITEMS 2
+#define MENUOPTION_SAVE 3
+
 #define BASEOPTION_ATTACK 1
 #define BASEOPTION_ITEM 2
 #define BASEOPTION_SWAP 3
@@ -60,6 +64,7 @@ int joystickCoolDown = 0;
 int joystickCoolDownStart = JOYSTICK_COOLDOWNSTART;
 
 const uint8_t bottomRow[] = { 1, 48, 94, 63};
+const uint8_t menuRow[] = { 1, 0, 56, 24};
 const uint8_t startMenuRow[] = { 4, 31, 58, 46};
 uint8_t nameRow[] = { 28, 37, 94, 44};
 const uint8_t portraitLoc[] = { 1, 21, 24, 44};
@@ -299,6 +304,19 @@ void ColorMonster::calculateColor()
         max = k;
     }
     power[i].color = colors[max][0];
+  }
+}
+
+void ColorMonster::draw(int line, uint8_t *lineBuffer, bool reverse)
+{
+  if (!reverse)
+  {
+    memcpy(lineBuffer, img + (line * 48 * 2), 48 * 2);
+  }
+  else
+  {
+    for (int i = 0; i < 48; i++)
+      memcpy(lineBuffer + (i * 2), img + (((line * 48) + (47 - i)) * 2), 2);
   }
 }
 
@@ -710,6 +728,7 @@ class World
     const Area *currentArea;
     uint8_t collision[800];
     NPCInstance npc[MAX_NPC];
+    static const char *menuOption[3];
 };
 
 World world(&startTown);
@@ -1083,6 +1102,25 @@ void World::update()
       }
     }
   }
+  else if (state == STATE_MENU)
+  {
+      uint8_t c = choice.process();
+      if (c != CHOICE_NONE)
+      {
+        switch (c)
+        {
+          case CHOICE_BACK:
+            state = STATE_WORLD;
+            break;
+          case MENUOPTION_SAVE:
+            // Save data here
+            state = STATE_WORLD;
+            break;
+          default:
+            break;
+        }
+      }
+  }
   else
   {
     uint8_t btn = checkButton(TAButton1 | TAButton2);
@@ -1254,11 +1292,10 @@ void World::update()
     {
       if (btn == TAButton2)
       {
-        state = STATE_BATTLECHOICE;
+        state = STATE_MENU;
         buttonCoolDown = BUTTON_COOLDOWN;
-        activeOpponent->init(0, 2, (const ColorRule *)jessCateyeRule);
-        activeOpponent->calculateColor();
-        battle.init();
+        choice.setRect(menuRow);
+        choice.setOptions(1, 3, menuOption);
       }
       else if (btn == TAButton1)
       {
@@ -1609,6 +1646,10 @@ void World::draw()
       if (dialogContext.choose)
         choice.draw(lines, lineBuffer);
     }
+    else if (state == STATE_MENU)
+    {
+      choice.draw(lines, lineBuffer);
+    }
     display.writeBuffer(lineBuffer,96 * 2);
   }
   display.endTransfer();
@@ -1678,6 +1719,8 @@ bool World::isTrainerIn(int xWhere, int yWhere)
     return true;
   return false;
 }
+
+const char *World::menuOption[3] { "Monsters", "Items", "Save" };
 
 void Battle::init()
 {
@@ -1858,9 +1901,8 @@ void Battle::draw()
 
   for(int lines = 0; lines < 64; ++lines)
   {
-    memcpy(lineBuffer, active->img + (lines * 48 * 2), 48 * 2);
-    for (int i = 0; i < 48; i++)
-      memcpy(lineBuffer + ((48 + i) *2), activeOpponent->img + (((lines * 48) + (47 - i)) * 2), 2);
+    active->draw(lines, lineBuffer, false);
+    activeOpponent->draw(lines, lineBuffer + 48 * 2, true);
     if (state == STATE_BATTLECHOICE)
     {
       choice.draw(lines, lineBuffer);
@@ -1964,7 +2006,7 @@ void Title::draw()
   for(int lines = 0; lines < 64; ++lines)
   {
     memcpy(lineBuffer, _image_title_data + (lines * 48 * 2), 48 * 2);
-    memcpy(lineBuffer + 48 * 2, opponent[0].img + (lines * 48 * 2), 48 * 2);
+    opponent[0].draw(lines, lineBuffer + 48 * 2, false);
     choice.draw(lines, lineBuffer);
     display.writeBuffer(lineBuffer,96 * 2);
   }
@@ -2024,7 +2066,7 @@ void loop()
   {
     paint.update();
   }
-  else if ((state == STATE_WORLD) || (state == STATE_TALKING))
+  else if ((state == STATE_WORLD) || (state == STATE_MENU) || (state == STATE_TALKING))
   {
     world.update();
   }
@@ -2040,7 +2082,7 @@ void loop()
   {
     paint.draw();
   }
-  else if ((state == STATE_WORLD) || (state == STATE_TALKING))
+  else if ((state == STATE_WORLD) || (state == STATE_MENU) || (state == STATE_TALKING))
   {
     world.draw();
   }
