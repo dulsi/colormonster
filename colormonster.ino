@@ -43,9 +43,9 @@ SdFile dataFile;
 #define CHOICE_NONE 255
 #define CHOICE_BACK 254
 
-#define MENUOPTION_MONSTERS 1
-#define MENUOPTION_ITEMS 2
-#define MENUOPTION_SAVE 3
+#define MENUOPTION_MONSTERS 0
+#define MENUOPTION_ITEMS 1
+#define MENUOPTION_SAVE 2
 
 #define BASEOPTION_ATTACK 1
 #define BASEOPTION_ITEM 2
@@ -556,21 +556,9 @@ void Painter::update()
     }
     else if ((btn & TAButton1) && (px > 88) && (px < 95) && (py > 1) && (py < 18))
     {
-      if (!active->saved)
-      {
-        if (!dataFile.open("colormonster/colormn1.dat", O_WRITE | O_CREAT | O_TRUNC))
-        {
-        }
-        else
-        {
-          dataFile.write(active->img, 64*48*2);
-          dataFile.sync();
-          dataFile.close();
-          active->calculateColor();
-          active->saved = true;
-          state = STATE_WORLD;
-        }
-      }
+      state = prevState;
+      prevState = STATE_WORLD;
+      active->calculateColor();
       buttonCoolDown = BUTTON_COOLDOWN;
     }
     if ((btn & TAButton2) && (px < 48))
@@ -607,7 +595,7 @@ void Painter::draw()
   for(int lines = 0; lines < 64; ++lines)
   {
     if (state == STATE_PAINT)
-      memcpy(lineBuffer, active->img + (lines * 48 * 2), 48 * 2);
+      active->draw(lines, lineBuffer, false);
     else
     {
       int curLine = zoomy + lines / 2;
@@ -1112,8 +1100,20 @@ void World::update()
           case CHOICE_BACK:
             state = STATE_WORLD;
             break;
+          case MENUOPTION_MONSTERS:
+            state = STATE_MONSTERS;
+            break;
           case MENUOPTION_SAVE:
             // Save data here
+            if (!dataFile.open("colormonster/colormn1.dat", O_WRITE | O_CREAT | O_TRUNC))
+            {
+            }
+            else
+            {
+              dataFile.write(active->img, 64*48*2);
+              dataFile.sync();
+              dataFile.close();
+            }
             state = STATE_WORLD;
             break;
           default:
@@ -2017,6 +2017,73 @@ const char *Title::baseOption[2] = { "Continue", "New Game" };
 
 Title title;
 
+class MonsterPage
+{
+  public:
+    void update();
+    void draw();
+};
+
+void MonsterPage::update()
+{
+  uint8_t btn = checkButton(TAButton1 | TAButton2);
+  uint8_t joyDir = checkJoystick(TAJoystickUp | TAJoystickDown | TAJoystickLeft | TAJoystickRight);
+  if (joystickCoolDown > 0)
+  {
+    joystickCoolDown--;
+  }
+  else
+  {
+  }
+  if (buttonCoolDown > 0)
+  {
+    buttonCoolDown--;
+  }
+  else
+  {
+    if (btn == TAButton2)
+    {
+      state = STATE_MENU;
+      buttonCoolDown = BUTTON_COOLDOWN;
+      choice.setRect(menuRow);
+      choice.setOptions(1, 3, World::menuOption);
+    }
+    if (btn == TAButton1)
+    {
+      prevState = state;
+      state = STATE_PAINT;
+      buttonCoolDown = BUTTON_COOLDOWN;
+    }
+  }
+}
+
+void MonsterPage::draw()
+{
+  display.goTo(0,0);
+  display.startData();
+
+  uint8_t lineBuffer[96 * 2];
+
+  for(int lines = 0; lines < 64; ++lines)
+  {
+    active->draw(lines, lineBuffer + 48 * 2, false);
+    memset(lineBuffer, 0, 48 * 2);
+    if (lines <= 6)
+    {
+      int yOffset = lines % 8;
+      for (int i = 0; monsterType[active->baseMonster].name[i]; i++)
+      {
+        const uint8_t *fontData = world.getFontData(monsterType[active->baseMonster].name[i], yOffset);
+        memcpy(lineBuffer + ((i * 6) * 2), fontData, 6 * 2);
+      }
+    }
+    display.writeBuffer(lineBuffer,96 * 2);
+  }
+  display.endTransfer();
+}
+
+MonsterPage monsterPage;
+
 unsigned long lastTime;
 
 void setup()
@@ -2074,6 +2141,10 @@ void loop()
   {
     battle.update();
   }
+  else if (state == STATE_MONSTERS)
+  {
+    monsterPage.update();
+  }
   if (state == STATE_TITLE)
   {
     title.draw();
@@ -2089,6 +2160,10 @@ void loop()
   else if ((state == STATE_BATTLECHOICE) || (state == STATE_BATTLE) || (state == STATE_BATTLEWON) || (state == STATE_BATTLELOST))
   {
     battle.draw();
+  }
+  else if (state == STATE_MONSTERS)
+  {
+    monsterPage.draw();
   }
   unsigned long oldTime = lastTime;
   lastTime = millis();
