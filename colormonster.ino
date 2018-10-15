@@ -2077,6 +2077,50 @@ void MonsterPage::draw()
         memcpy(lineBuffer + ((i * 6) * 2), fontData, 6 * 2);
       }
     }
+    else if ((lines >= 8) && (lines < 15))
+    {
+      int yOffset = lines % 8;
+      const uint8_t *fontData = world.getFontData('M', yOffset);
+      memcpy(lineBuffer, fontData, 6 * 2);
+      fontData = world.getFontData('H', yOffset);
+      memcpy(lineBuffer + ((1 * 6) * 2), fontData, 6 * 2);
+      fontData = world.getFontData('P', yOffset);
+      memcpy(lineBuffer + ((2 * 6) * 2), fontData, 6 * 2);
+      fontData = world.getFontData(':', yOffset);
+      memcpy(lineBuffer + ((3 * 6) * 2), fontData, 6 * 2);
+      int num = active->maxHp;
+      int where = 42;
+      do
+      {
+        int spot = num % 10;
+        fontData = world.getFontData(spot + '0', yOffset);
+        memcpy(lineBuffer + (where * 2), fontData, 6 * 2);
+        num = num / 10;
+        where -= 6;
+      }
+      while (num > 0);
+    }
+    else if ((lines >= 16) && (lines < 23))
+    {
+      int yOffset = lines % 8;
+      const uint8_t *fontData = world.getFontData('H', yOffset);
+      memcpy(lineBuffer, fontData, 6 * 2);
+      fontData = world.getFontData('P', yOffset);
+      memcpy(lineBuffer + ((1 * 6) * 2), fontData, 6 * 2);
+      fontData = world.getFontData(':', yOffset);
+      memcpy(lineBuffer + ((2 * 6) * 2), fontData, 6 * 2);
+      int num = active->hp;
+      int where = 42;
+      do
+      {
+        int spot = num % 10;
+        fontData = world.getFontData(spot + '0', yOffset);
+        memcpy(lineBuffer + (where * 2), fontData, 6 * 2);
+        num = num / 10;
+        where -= 6;
+      }
+      while (num > 0);
+    }
     display.writeBuffer(lineBuffer,96 * 2);
   }
   display.endTransfer();
