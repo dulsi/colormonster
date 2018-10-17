@@ -325,17 +325,84 @@ ColorMonster *active = &party[0];
 ColorMonster opponent[MONSTER_PARTYSIZE];
 ColorMonster *activeOpponent = &opponent[0];
 
+#define MAX_SECRETS 10
+
 class Trainer
 {
   public:
-    Trainer() : location(0), icon(28), x(136), y(96) {}
+    Trainer() : icon(28), location(0), x(136), y(96) {}
+    bool load();
+    void save();
 
-    int location;
     uint8_t icon;
+    int location;
     int x, y;
     uint8_t dir;
-    uint8_t secrets[10];
+    uint8_t secrets[MAX_SECRETS];
 };
+
+bool Trainer::load()
+{
+  if (sd.exists("colormonster/colormn1.dat"))
+  {
+    if (!dataFile.open("colormonster/save1.dat", O_READ))
+    {
+    }
+    else
+    {
+      uint8_t tmp;
+      dataFile.read(&icon, 1);
+      dataFile.read(&tmp, 1);
+      location = tmp;
+      dataFile.read(&tmp, 1);
+      location = location + (tmp << 8);
+      dataFile.read(&tmp, 1);
+      x = tmp;
+      dataFile.read(&tmp, 1);
+      x = x + (tmp << 8);
+      dataFile.read(&tmp, 1);
+      y = tmp;
+      dataFile.read(&tmp, 1);
+      y = y + (tmp << 8);
+      dataFile.read(&dir, 1);
+      dataFile.read(secrets, MAX_SECRETS);
+      dataFile.read(active->img, 64*48*2);
+      dataFile.sync();
+      dataFile.close();
+      return true;
+    }
+  }
+  return false;
+}
+
+void Trainer::save()
+{
+  if (!dataFile.open("colormonster/save1.dat", O_WRITE | O_CREAT | O_TRUNC))
+  {
+  }
+  else
+  {
+    uint8_t tmp;
+    dataFile.write(&icon, 1);
+    tmp = location;
+    dataFile.write(&tmp, 1);
+    tmp = location >> 8;
+    dataFile.write(&tmp, 1);
+    tmp = x;
+    dataFile.write(&tmp, 1);
+    tmp = x >> 8;
+    dataFile.write(&tmp, 1);
+    tmp = y;
+    dataFile.write(&tmp, 1);
+    tmp = y >> 8;
+    dataFile.write(&tmp, 1);
+    dataFile.write(&dir, 1);
+    dataFile.write(secrets, MAX_SECRETS);
+    dataFile.write(active->img, 64*48*2);
+    dataFile.sync();
+    dataFile.close();
+  }
+}
 
 Trainer pc;
 
@@ -1104,16 +1171,7 @@ void World::update()
             state = STATE_MONSTERS;
             break;
           case MENUOPTION_SAVE:
-            // Save data here
-            if (!dataFile.open("colormonster/colormn1.dat", O_WRITE | O_CREAT | O_TRUNC))
-            {
-            }
-            else
-            {
-              dataFile.write(active->img, 64*48*2);
-              dataFile.sync();
-              dataFile.close();
-            }
+            pc.save();
             state = STATE_WORLD;
             break;
           default:
@@ -1275,6 +1333,7 @@ void World::update()
         {
           if ((pc.x == currentArea->portals[i].locX) && (pc.y == currentArea->portals[i].locY))
           {
+            pc.location = currentArea->portals[i].area;
             pc.x = currentArea->portals[i].startX;
             pc.y = currentArea->portals[i].startY;
             currentArea = areaList[currentArea->portals[i].area];
@@ -1988,20 +2047,14 @@ void Title::update()
     switch (c)
     {
       case 0:
-        if (sd.exists("colormonster/colormn1.dat"))
+        if (pc.load())
         {
-          if (!dataFile.open("colormonster/colormn1.dat", O_READ))
-          {
-          }
-          else
-          {
-            int sz = dataFile.write(active->img, 64*48*2);
-            dataFile.read(active->img, 64*48*2);
-            dataFile.sync();
-            dataFile.close();
-          }
+          world.currentArea = areaList[pc.location];
+          world.init();
+          state = STATE_WORLD;
         }
-        state = STATE_WORLD;
+        else
+          state = STATE_PAINT;
         buttonCoolDown = BUTTON_COOLDOWN;
         break;
       case 1:
