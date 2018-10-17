@@ -100,6 +100,7 @@ const uint8_t tilesetCollision[] = {
   1, 1, 1, 1, 1, 1, 1, 1
 };
 
+void restorePreviousState();
 
 void ColorMonster::init(uint8_t bm)
 {
@@ -484,8 +485,11 @@ const ColorRule jessCateyeRule[] = {
 const NPCMonster jessCateye[] = {
   {0, 2, jessCateyeRule}
 };
-const NPC startTownNPC[] = { { "Jessica", 27, 1, 80, 40, sampleDialog, 1, jessCateye } };
-const Area startTown(24, 16, startTownMap, 1, startTownNPC, 1, startTownPortal);
+const NPC startTownNPC[] = {
+  { "Tormish", 28, 2, 8 * 10, 8 * 8, mentorDialog, 0, NULL },
+  { "Jessica", 27, 1, 80, 40, sampleDialog, 1, jessCateye }
+};
+const Area startTown(24, 16, startTownMap, 2, startTownNPC, 1, startTownPortal);
 
 const Area *areaList[] = {
   &startTown,
@@ -623,8 +627,7 @@ void Painter::update()
     }
     else if ((btn & TAButton1) && (px > 88) && (px < 95) && (py > 1) && (py < 18))
     {
-      state = prevState;
-      prevState = STATE_WORLD;
+      restorePreviousState();
       active->calculateColor();
       buttonCoolDown = BUTTON_COOLDOWN;
     }
@@ -779,6 +782,7 @@ class World
     const uint8_t *getTileData(int tile, int y);
     const uint8_t *getFontData(char c, int y);
     bool isTrainerIn(int xWhere, int yWhere);
+    void startGame();
 
     const Area *currentArea;
     uint8_t collision[800];
@@ -1779,6 +1783,26 @@ bool World::isTrainerIn(int xWhere, int yWhere)
   return false;
 }
 
+void World::startGame()
+{
+  state = STATE_PAINT;
+  npc[0].dir |= DIRECTION_PAUSE;
+  dialogContext.init(introDialog);
+  if (dialogContext.run())
+  {
+    state = STATE_TALKING;
+    nameRow[2] = nameRow[0] + strlen(currentArea->npc[0].name) * 6;
+    for (int i = 0; i < currentArea->npc[0].monsterCount; i++)
+    {
+      opponent[i].init(currentArea->npc[0].monsters[i]);
+      opponent[i].calculateColor();
+    }
+    activeOpponent = &opponent[0];
+    nameMessage.setText(currentArea->npc[0].name);
+    portrait.setPortrait(currentArea->npc[0].portrait);
+  }
+}
+
 const char *World::menuOption[3] { "Monsters", "Items", "Save" };
 
 void Battle::init()
@@ -1929,22 +1953,7 @@ void Battle::update()
     {
       if ((btn == TAButton1) || (btn == TAButton2))
       {
-        state = prevState;
-        prevState = STATE_WORLD;
-        if (state == STATE_TALKING)
-        {
-          if (!dialogContext.run())
-          {
-            state = STATE_WORLD;
-            for (int i = 0; i < world.currentArea->countNPC; i++)
-            {
-              if ((world.npc[i].dir & DIRECTION_PAUSE) == DIRECTION_PAUSE)
-              {
-                world.npc[i].dir = world.npc[i].dir & (~DIRECTION_PAUSE);
-              }
-            }
-          }
-        }
+        restorePreviousState();
         buttonCoolDown = BUTTON_COOLDOWN;
       }
     }
@@ -2054,11 +2063,11 @@ void Title::update()
           state = STATE_WORLD;
         }
         else
-          state = STATE_PAINT;
+          world.startGame();
         buttonCoolDown = BUTTON_COOLDOWN;
         break;
       case 1:
-        state = STATE_PAINT;
+        world.startGame();
         buttonCoolDown = BUTTON_COOLDOWN;
         break;
     }
@@ -2198,6 +2207,26 @@ void MonsterPage::draw()
 MonsterPage monsterPage;
 
 unsigned long lastTime;
+
+void restorePreviousState()
+{
+  state = prevState;
+  prevState = STATE_WORLD;
+  if (state == STATE_TALKING)
+  {
+    if (!dialogContext.run())
+    {
+      state = STATE_WORLD;
+      for (int i = 0; i < world.currentArea->countNPC; i++)
+      {
+        if ((world.npc[i].dir & DIRECTION_PAUSE) == DIRECTION_PAUSE)
+        {
+          world.npc[i].dir = world.npc[i].dir & (~DIRECTION_PAUSE);
+        }
+      }
+    }
+  }
+}
 
 void setup()
 {

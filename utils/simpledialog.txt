@@ -19,3 +19,16 @@ FI
 [worriedDialog]
 SAY I want to battle but...
 SAY my cateye is very sick.
+
+[introDialog]
+SAY Welcome. Your accident was
+SAY unfortunate. We will teach
+SAY you to control your monster.
+SAY What color is your monster?
+PAINT
+SAY Have a look around.
+
+[mentorDialog]
+SAY I created this town to train
+SAY color masters. First try to
+SAY learn about color strikes.

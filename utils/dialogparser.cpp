@@ -135,6 +135,11 @@ std::string parseDialog(std::ifstream &file, uint8_t *dialogResult, int &current
    dialogResult[current] = COMMAND_HEALALL;
    current++;
   }
+  else if (0 == std::strncmp(line.c_str(), "PAINT", 6))
+  {
+   dialogResult[current] = COMMAND_PAINT;
+   current++;
+  }
  }
  if (!name.empty())
  {

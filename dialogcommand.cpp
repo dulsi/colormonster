@@ -67,6 +67,13 @@ bool DialogContext::run(uint8_t c)
           party[i].hp = party[i].maxHp;
         }
         break;
+      case COMMAND_PAINT:
+        choose = false;
+        message = false;
+        prevState = state;
+        state = STATE_PAINT;
+        return true;
+        break;
       default:
         return false;
         break;

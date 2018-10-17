@@ -4,6 +4,7 @@
 #define COMMAND_JUMP 4
 #define COMMAND_BATTLE 5
 #define COMMAND_HEALALL 6
+#define COMMAND_PAINT 7
 #define CONDITION_YES 1
 
 class DialogContext
