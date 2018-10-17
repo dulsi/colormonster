@@ -1988,6 +1988,22 @@ void Title::update()
     switch (c)
     {
       case 0:
+        if (sd.exists("colormonster/colormn1.dat"))
+        {
+          if (!dataFile.open("colormonster/colormn1.dat", O_READ))
+          {
+          }
+          else
+          {
+            int sz = dataFile.write(active->img, 64*48*2);
+            dataFile.read(active->img, 64*48*2);
+            dataFile.sync();
+            dataFile.close();
+          }
+        }
+        state = STATE_WORLD;
+        buttonCoolDown = BUTTON_COOLDOWN;
+        break;
       case 1:
         state = STATE_PAINT;
         buttonCoolDown = BUTTON_COOLDOWN;
@@ -2150,19 +2166,6 @@ void setup()
     while(1);
   }
   lastTime = millis();
-  if (sd.exists("colormonster/colormn1.dat"))
-  {
-    if (!dataFile.open("colormonster/colormn1.dat", O_READ))
-    {
-    }
-    else
-    {
-      int sz = dataFile.write(active->img, 64*48*2);
-      dataFile.read(active->img, 64*48*2);
-      dataFile.sync();
-      dataFile.close();
-    }
-  }
   title.init();
 }
 
