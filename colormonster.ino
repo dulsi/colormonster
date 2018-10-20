@@ -95,7 +95,7 @@ const uint8_t tilesetCollision[] = {
   0, 1, 1, 1, 1, 1, 1, 1,
   0, 1, 1, 1, 1, 1, 1, 1,
   1, 1, 1, 0, 1, 1, 1, 1,
-  1, 1, 1, 1, 0, 0, 1, 1,
+  1, 1, 1, 1, 0, 0, 1, 0,
   0, 1, 1, 1, 1, 1, 1, 1,
   1, 1, 1, 1, 1, 1, 1, 1
 };
@@ -577,23 +577,26 @@ void Painter::update()
         dx = px / 2 + zoomx;
         dy = py / 2 + zoomy;
       }
-      if (tool == TOOL_DRAW)
+      const unsigned char *baseImg = monsterType[active->baseMonster].img;
+      unsigned char fillSpot = baseImg[dy * 48 + dx];
+      if (fillSpot != 0)
       {
-        active->img[dy * 48 * 2 + dx * 2] = color1;
-        active->img[dy * 48 * 2 + dx * 2 + 1] = color2;
-      }
-      else if (tool == TOOL_FLOOD)
-      {
-        const unsigned char *baseImg = monsterType[active->baseMonster].img;
-        unsigned char fillSpot = baseImg[dy * 48 + dx];
-        if (fillSpot != 0)
+        if (tool == TOOL_DRAW)
         {
-          for (int i = 0; i < 64*48; i++)
+          active->img[dy * 48 * 2 + dx * 2] = color1;
+          active->img[dy * 48 * 2 + dx * 2 + 1] = color2;
+        }
+        else if (tool == TOOL_FLOOD)
+        {
+          if (fillSpot != 0)
           {
-            if (baseImg[i] == fillSpot)
+            for (int i = 0; i < 64*48; i++)
             {
-              active->img[i * 2] = color1;
-              active->img[i * 2 + 1] = color2;
+              if (baseImg[i] == fillSpot)
+              {
+                active->img[i * 2] = color1;
+                active->img[i * 2 + 1] = color2;
+              }
             }
           }
         }
