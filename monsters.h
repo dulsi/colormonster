@@ -6,12 +6,13 @@
 #include "sharpfin.h"
 #include "flacono.h"
 #include "propellercat.h"
+#include "eruptibus.h"
 
 #define POWERTYPE_MELEE 0
 #define POWERTYPE_RANGED 1
 #define POWERTYPE_AREA 2
 
-#define COLMONSTERTYPE_COUNT 5
+#define COLMONSTERTYPE_COUNT 6
 
 class ColorMonsterPowerType
 {
@@ -37,7 +38,8 @@ const ColorMonsterType monsterType[] =
   {"Weavifly", _image_weavifly_data, 13, {{"Slam", 0x0b, POWERTYPE_MELEE, 8}, {"Bite", 0x3f, POWERTYPE_MELEE, 4}, {"Wind", 0x10, POWERTYPE_AREA, 6}, {"Sting", 0xe2, POWERTYPE_RANGED, 8}, {"Cocoon", 0xfd, POWERTYPE_MELEE, 4}}},
   {"Sharpfin", _image_sharpfin_data, 13, {{"Slam", 0x0b, POWERTYPE_MELEE, 8}, {"Bite", 0x3f, POWERTYPE_MELEE, 4}, {"Wind", 0x10, POWERTYPE_MELEE, 6}, {"Tail", 0xe2, POWERTYPE_MELEE, 8}, {"Belly", 0xfd, POWERTYPE_MELEE, 4}}},
   {"Flacono", _image_flacono_data, 13, {{"Slam", 0x0b, POWERTYPE_MELEE, 8}, {"Bite", 0x3f, POWERTYPE_MELEE, 4}, {"Wind", 0x10, POWERTYPE_MELEE, 6}, {"Tail", 0xe2, POWERTYPE_MELEE, 8}, {"Belly", 0xfd, POWERTYPE_MELEE, 4}}},
-  {"Propellercat", _image_propellercat_data, 13, {{"Slam", 0x0b, POWERTYPE_MELEE, 8}, {"Bite", 0x3f, POWERTYPE_MELEE, 4}, {"Wind", 0x10, POWERTYPE_MELEE, 6}, {"Tail", 0xe2, POWERTYPE_MELEE, 8}, {"Belly", 0xfd, POWERTYPE_MELEE, 4}}}
+  {"Propellercat", _image_propellercat_data, 13, {{"Slam", 0x0b, POWERTYPE_MELEE, 8}, {"Bite", 0x3f, POWERTYPE_MELEE, 4}, {"Wind", 0x10, POWERTYPE_MELEE, 6}, {"Tail", 0xe2, POWERTYPE_MELEE, 8}, {"Belly", 0xfd, POWERTYPE_MELEE, 4}}},
+  {"Eruptibus", _image_eruptibus_data, 13, {{"Slam", 0x0b, POWERTYPE_MELEE, 8}, {"Bite", 0x3f, POWERTYPE_MELEE, 4}, {"Wind", 0x10, POWERTYPE_MELEE, 6}, {"Tail", 0xe2, POWERTYPE_MELEE, 8}, {"Belly", 0xfd, POWERTYPE_MELEE, 4}}}
 };
 
 #endif

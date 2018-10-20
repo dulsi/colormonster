@@ -39,6 +39,10 @@ The Propellercat is based on the Propellercat from Tuxemon. Original idea by
 TheSplashDragon. Design and sprites by tamashihoshi. Image is licensed under
 CC-BY-SA 4.0. Transformed to black and white by Dennis Payne.
 
+The Eruptibus image is based on the Eruptibus from Tuxemon. Original design by
+Leo. Sprites by josepharaoh99 and Leo. Image is licensed under CC-BY-SA 4.0.
+Transformed to black and white by Dennis Payne.
+
 The font is ASCII Bitmap Font "oldschool" by domsson
 https://opengameart.org/content/ascii-bitmap-font-oldschool
 
