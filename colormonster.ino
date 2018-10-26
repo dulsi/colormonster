@@ -321,6 +321,18 @@ void ColorMonster::draw(int line, uint8_t *lineBuffer, bool reverse)
   }
 }
 
+void ColorMonster::drawZoom(int line, uint8_t *lineBuffer, uint8_t zoomx, uint8_t zoomy)
+{
+  int curLine = zoomy + line / 2;
+  for (int i = 0; i < 24; ++i)
+  {
+    lineBuffer[i * 2 * 2] = img[curLine * 48 * 2 + (zoomx + i) * 2];
+    lineBuffer[i * 2 * 2 + 1] = img[curLine * 48 * 2 + (zoomx + i) * 2 + 1];
+    lineBuffer[i * 2 * 2 + 2] = img[curLine * 48 * 2 + (zoomx + i) * 2];
+    lineBuffer[i * 2 * 2 + 3] = img[curLine * 48 * 2 + (zoomx + i) * 2 + 1];
+  }
+}
+
 ColorMonster party[MONSTER_PARTYSIZE];
 ColorMonster *active = &party[0];
 ColorMonster opponent[MONSTER_PARTYSIZE];
@@ -671,14 +683,7 @@ void Painter::draw()
       active->draw(lines, lineBuffer, false);
     else
     {
-      int curLine = zoomy + lines / 2;
-      for (int i = 0; i < 24; ++i)
-      {
-        lineBuffer[i * 2 * 2] = active->img[curLine * 48 * 2 + (zoomx + i) * 2];
-        lineBuffer[i * 2 * 2 + 1] = active->img[curLine * 48 * 2 + (zoomx + i) * 2 + 1];
-        lineBuffer[i * 2 * 2 + 2] = active->img[curLine * 48 * 2 + (zoomx + i) * 2];
-        lineBuffer[i * 2 * 2 + 3] = active->img[curLine * 48 * 2 + (zoomx + i) * 2 + 1];
-      }
+      active->drawZoom(lines, lineBuffer, zoomy, zoomx);
     }
     if (lines < 2)
       memset(lineBuffer + 48 * 2, 0, 48 * 2);

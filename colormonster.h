@@ -39,6 +39,7 @@ class ColorMonster
     void buildChoice(uint8_t &choiceEnd, char **choiceList, char *choiceString);
     void calculateColor();
     void draw(int line, uint8_t *lineBuffer, bool reverse);
+    void drawZoom(int line, uint8_t *lineBuffer, uint8_t zoomx, uint8_t zoomy);
 
     uint8_t baseMonster;
     unsigned char img[64*48*2];
