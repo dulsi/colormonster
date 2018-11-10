@@ -1445,7 +1445,7 @@ void World::update()
               col = getCollision(xWhere + 1, yWhere);
               if (col > 1)
                 xWhere++;
-              else if (xMod > 0)
+              else if (yMod > 0)
               {
                 col = getCollision(xWhere + 1, yWhere + 1);
                 if (col > 1)
