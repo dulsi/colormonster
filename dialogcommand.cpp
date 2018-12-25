@@ -98,6 +98,10 @@ bool DialogContext::checkCondition(uint8_t c)
      if (pc.testSecret(dialog[currentCommand++]))
       return true;
      break;
+    case CONDITION_BATTLEWON:
+     if (battle.lastBattle == BATTLE_WON)
+      return true;
+     break;
     default:
       break;
   }

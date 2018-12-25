@@ -8,6 +8,7 @@
 #define COMMAND_SETSECRET 8
 #define CONDITION_YES 1
 #define CONDITION_TESTSECRET 2
+#define CONDITION_BATTLEWON 3
 
 class DialogContext
 {

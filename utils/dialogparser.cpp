@@ -112,6 +112,11 @@ std::string parseDialog(std::ifstream &file, uint8_t *dialogResult, int &current
     sscanf(line.c_str() + 14, "%u", &num);
     dialogResult[current++] = num;
    }
+   else if (0 == std::strncmp(line.c_str() + 3, "BATTLEWON", 9))
+   {
+    dialogResult[current] = CONDITION_BATTLEWON;
+    current++;
+   }
    int jumpLoc = current;
    current += 2;
    std::string endTag = parseDialog(file, dialogResult, current);

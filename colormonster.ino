@@ -1840,7 +1840,8 @@ void Battle::update()
         c++;
         if (c == BASEOPTION_RUN)
         {
-          state = STATE_WORLD;
+          lastBattle = BATTLE_RAN;
+          restorePreviousState();
         }
         else if (c == BASEOPTION_ATTACK)
         {
@@ -1889,6 +1890,7 @@ void Battle::update()
             }
             if (active->hp == 0)
             {
+              lastBattle = BATTLE_LOST;
               state = STATE_BATTLELOST;
               bottomMessage.setText("You have lost the battle.");
             }
@@ -1905,6 +1907,7 @@ void Battle::update()
             }
             if ((state == STATE_BATTLE) && (activeOpponent->hp == 0))
             {
+              lastBattle = BATTLE_WON;
               state = STATE_BATTLEWON;
               bottomMessage.setText("You have won the battle.");
             }
