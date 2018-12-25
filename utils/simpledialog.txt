@@ -1,8 +1,13 @@
 [sampleDialog]
-SAY Do you want to battle?
-CHOOSE_YESNO
-IF yes THEN
- BATTLE
+IF TESTSECRET 1
+ SAY You did well.
+ELSE
+ SAY Do you want to battle?
+ CHOOSE_YESNO
+ IF yes THEN
+  BATTLE
+  SETSECRET 1
+ FI
 FI
 
 [doctorDialog]

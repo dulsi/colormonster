@@ -34,12 +34,12 @@ class ColorMonsterType
 
 const ColorMonsterType monsterType[] =
 {
-  {"Cateye", _image_cateye_data, 13, {{"Slam", 0x49, POWERTYPE_MELEE, 6}, {"EyeZap", 0x6c, POWERTYPE_RANGED, 6}, {"Kick", 0x0b, POWERTYPE_MELEE, 8}, {"Tail", 0x10, POWERTYPE_MELEE, 8}, {"Sonic", 0xe0, POWERTYPE_AREA, 4}}},
-  {"Weavifly", _image_weavifly_data, 13, {{"Slam", 0x0b, POWERTYPE_MELEE, 8}, {"Bite", 0x3f, POWERTYPE_MELEE, 4}, {"Wind", 0x10, POWERTYPE_AREA, 6}, {"Sting", 0xe2, POWERTYPE_RANGED, 8}, {"Cocoon", 0xfd, POWERTYPE_MELEE, 4}}},
-  {"Sharpfin", _image_sharpfin_data, 13, {{"Slam", 0x0b, POWERTYPE_MELEE, 8}, {"Bite", 0x3f, POWERTYPE_MELEE, 4}, {"Wind", 0x10, POWERTYPE_MELEE, 6}, {"Tail", 0xe2, POWERTYPE_MELEE, 8}, {"Belly", 0xfd, POWERTYPE_MELEE, 4}}},
-  {"Flacono", _image_flacono_data, 13, {{"Slam", 0x0b, POWERTYPE_MELEE, 8}, {"Bite", 0x3f, POWERTYPE_MELEE, 4}, {"Wind", 0x10, POWERTYPE_MELEE, 6}, {"Tail", 0xe2, POWERTYPE_MELEE, 8}, {"Belly", 0xfd, POWERTYPE_MELEE, 4}}},
-  {"Propellercat", _image_propellercat_data, 13, {{"Slam", 0x0b, POWERTYPE_MELEE, 8}, {"Bite", 0x3f, POWERTYPE_MELEE, 4}, {"Wind", 0x10, POWERTYPE_MELEE, 6}, {"Tail", 0xe2, POWERTYPE_MELEE, 8}, {"Belly", 0xfd, POWERTYPE_MELEE, 4}}},
-  {"Eruptibus", _image_eruptibus_data, 13, {{"Slam", 0x0b, POWERTYPE_MELEE, 8}, {"Bite", 0x3f, POWERTYPE_MELEE, 4}, {"Wind", 0x10, POWERTYPE_MELEE, 6}, {"Tail", 0xe2, POWERTYPE_MELEE, 8}, {"Belly", 0xfd, POWERTYPE_MELEE, 4}}}
+  {"Cateye", _image_cateye_data, 15, {{"Slam", 0x49, POWERTYPE_MELEE, 6}, {"EyeZap", 0x6c, POWERTYPE_RANGED, 6}, {"Kick", 0x0b, POWERTYPE_MELEE, 8}, {"Tail", 0x10, POWERTYPE_MELEE, 8}, {"Sonic", 0xe0, POWERTYPE_AREA, 4}}},
+  {"Weavifly", _image_weavifly_data, 14, {{"Slam", 0x0b, POWERTYPE_MELEE, 8}, {"Bite", 0x3f, POWERTYPE_MELEE, 4}, {"Wind", 0x10, POWERTYPE_AREA, 6}, {"Sting", 0xe2, POWERTYPE_RANGED, 8}, {"Cocoon", 0xfd, POWERTYPE_MELEE, 4}}},
+  {"Sharpfin", _image_sharpfin_data, 16, {{"Slam", 0x0b, POWERTYPE_MELEE, 8}, {"Bite", 0x3f, POWERTYPE_MELEE, 4}, {"Wind", 0x10, POWERTYPE_MELEE, 6}, {"Tail", 0xe2, POWERTYPE_MELEE, 8}, {"Belly", 0xfd, POWERTYPE_MELEE, 4}}},
+  {"Flacono", _image_flacono_data, 14, {{"Slam", 0x0b, POWERTYPE_MELEE, 8}, {"Bite", 0x3f, POWERTYPE_MELEE, 4}, {"Wind", 0x10, POWERTYPE_MELEE, 6}, {"Tail", 0xe2, POWERTYPE_MELEE, 8}, {"Belly", 0xfd, POWERTYPE_MELEE, 4}}},
+  {"Propellercat", _image_propellercat_data, 14, {{"Slam", 0x0b, POWERTYPE_MELEE, 8}, {"Bite", 0x3f, POWERTYPE_MELEE, 4}, {"Wind", 0x10, POWERTYPE_MELEE, 6}, {"Tail", 0xe2, POWERTYPE_MELEE, 8}, {"Belly", 0xfd, POWERTYPE_MELEE, 4}}},
+  {"Eruptibus", _image_eruptibus_data, 18, {{"Slam", 0x0b, POWERTYPE_MELEE, 8}, {"Bite", 0x3f, POWERTYPE_MELEE, 4}, {"Wind", 0x10, POWERTYPE_MELEE, 6}, {"Tail", 0xe2, POWERTYPE_MELEE, 8}, {"Belly", 0xfd, POWERTYPE_MELEE, 4}}}
 };
 
 #endif

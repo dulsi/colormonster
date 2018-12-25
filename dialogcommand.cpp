@@ -4,6 +4,7 @@
 #include "battle.h"
 #include "colormonster.h"
 #include "dialogcommand.h"
+#include "trainer.h"
 #include "uiobject.h"
 
 const char *yesNoOption[2] = { "Yes", "No" };
@@ -74,6 +75,9 @@ bool DialogContext::run(uint8_t c)
         state = STATE_PAINT;
         return true;
         break;
+      case COMMAND_SETSECRET:
+        pc.setSecret(dialog[currentCommand++]);
+        break;
       default:
         return false;
         break;
@@ -90,6 +94,10 @@ bool DialogContext::checkCondition(uint8_t c)
       if (c == 0)
         return true;
       break;
+    case CONDITION_TESTSECRET:
+     if (pc.testSecret(dialog[currentCommand++]))
+      return true;
+     break;
     default:
       break;
   }

@@ -5,7 +5,9 @@
 #define COMMAND_BATTLE 5
 #define COMMAND_HEALALL 6
 #define COMMAND_PAINT 7
+#define COMMAND_SETSECRET 8
 #define CONDITION_YES 1
+#define CONDITION_TESTSECRET 2
 
 class DialogContext
 {

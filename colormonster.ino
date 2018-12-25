@@ -13,6 +13,7 @@
 #include "ui.h"
 #include "uiobject.h"
 #include "npcdialog.h"
+#include "trainer.h"
 
 #ifdef TINYARCADE_CONFIG
 #include "TinyArcade.h"
@@ -337,22 +338,6 @@ ColorMonster party[MONSTER_PARTYSIZE];
 ColorMonster *active = &party[0];
 ColorMonster opponent[MONSTER_PARTYSIZE];
 ColorMonster *activeOpponent = &opponent[0];
-
-#define MAX_SECRETS 10
-
-class Trainer
-{
-  public:
-    Trainer() : icon(28), location(0), x(136), y(96) {}
-    bool load();
-    void save();
-
-    uint8_t icon;
-    int location;
-    int x, y;
-    uint8_t dir;
-    uint8_t secrets[MAX_SECRETS];
-};
 
 bool Trainer::load()
 {
@@ -683,7 +668,7 @@ void Painter::draw()
       active->draw(lines, lineBuffer, false);
     else
     {
-      active->drawZoom(lines, lineBuffer, zoomy, zoomx);
+      active->drawZoom(lines, lineBuffer, zoomx, zoomy);
     }
     if (lines < 2)
       memset(lineBuffer + 48 * 2, 0, 48 * 2);

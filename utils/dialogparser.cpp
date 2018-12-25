@@ -104,6 +104,14 @@ std::string parseDialog(std::ifstream &file, uint8_t *dialogResult, int &current
     dialogResult[current] = CONDITION_YES;
     current++;
    }
+   else if (0 == std::strncmp(line.c_str() + 3, "TESTSECRET", 10))
+   {
+    dialogResult[current] = CONDITION_TESTSECRET;
+    current++;
+    unsigned int num;
+    sscanf(line.c_str() + 14, "%u", &num);
+    dialogResult[current++] = num;
+   }
    int jumpLoc = current;
    current += 2;
    std::string endTag = parseDialog(file, dialogResult, current);
@@ -139,6 +147,14 @@ std::string parseDialog(std::ifstream &file, uint8_t *dialogResult, int &current
   {
    dialogResult[current] = COMMAND_PAINT;
    current++;
+  }
+  else if (0 == std::strncmp(line.c_str(), "SETSECRET", 9))
+  {
+   dialogResult[current] = COMMAND_SETSECRET;
+   current++;
+   unsigned int num;
+   sscanf(line.c_str() + 10, "%u", &num);
+   dialogResult[current++] = num;
   }
  }
  if (!name.empty())
