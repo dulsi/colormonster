@@ -7,7 +7,7 @@ class ColorRule
   public:
     uint8_t instruct;
     unsigned char origColor;
-    uint8_t color[2][2];
+    uint8_t color[2];
 };
 
 class NPCMonster
@@ -31,7 +31,7 @@ class ColorMonsterPower
 class ColorMonster
 {
   public:
-    ColorMonster() : baseMonster(255), saved(false) { memset(img, 0, 64*48*2); }
+    ColorMonster() : baseMonster(255), saved(false) { memset(img, 0, 64*48); }
     void init(uint8_t bm);
     void init(const NPCMonster m);
     void init(uint8_t bm, int count, const ColorRule *r);
@@ -42,7 +42,7 @@ class ColorMonster
     void drawZoom(int line, uint8_t *lineBuffer, uint8_t zoomx, uint8_t zoomy);
 
     uint8_t baseMonster;
-    unsigned char img[64*48*2];
+    unsigned char img[64*48];
     int hp, maxHp;
     ColorMonsterPower power[5];
     bool saved;

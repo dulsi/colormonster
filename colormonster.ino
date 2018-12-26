@@ -73,7 +73,8 @@ const uint8_t portraitLoc[] = { 1, 21, 24, 44};
 const char noItems[] = "You have no items.";
 const char noSwap[] = "You have no more monsters.";
 
-const uint8_t colorList[16][2] = {
+const uint8_t colorList[17][2] = {
+  {0x00,0x00},
   {0x08,0x54},
   {0x00,0x1f},
   {0x58,0x81},
@@ -111,13 +112,11 @@ void ColorMonster::init(uint8_t bm)
   {
     if (baseImg[i] == 0)
     {
-      img[i * 2] = 0;
-      img[i * 2 + 1] = 0;
+      img[i] = 0;
     }
     else
     {
-      img[i * 2] = 255;
-      img[i * 2 + 1] = 255;
+      img[i] = 255;
     }
   }
   for (int i = 0; i < 2; i++)
@@ -141,8 +140,7 @@ void ColorMonster::init(uint8_t bm, int count, const ColorRule *r)
   {
     if (baseImg[i] == 0)
     {
-      img[i * 2] = 0;
-      img[i * 2 + 1] = 0;
+      img[i] = 0;
     }
     else
     {
@@ -157,13 +155,11 @@ void ColorMonster::init(uint8_t bm, int count, const ColorRule *r)
             case PATTERN_LINES:
               if ((i / 4) % 2 == 1)
               {
-                img[i * 2] = r[k].color[1][0];
-                img[i * 2 + 1] = r[k].color[1][1];
+                img[i] = r[k].color[1];
               }
               else
               {
-                img[i * 2] = r[k].color[0][0];
-                img[i * 2 + 1] = r[k].color[0][1];
+                img[i] = r[k].color[0];
               }
               break;
             case PATTERN_SCALE:
@@ -171,13 +167,11 @@ void ColorMonster::init(uint8_t bm, int count, const ColorRule *r)
               {
                 if (((((i / 96) % 2 == 1) && ((i + 7) % 8) < 2)) || (((i / 96) % 2 == 0) && ((i + 3) % 8) < 2))
                 {
-                 img[i * 2] = r[k].color[1][0];
-                 img[i * 2 + 1] = r[k].color[1][1];
+                 img[i] = r[k].color[1];
                 }
                 else
                 {
-                 img[i * 2] = r[k].color[0][0];
-                 img[i * 2 + 1] = r[k].color[0][1];
+                 img[i] = r[k].color[0];
                 }
               }
               else
@@ -185,27 +179,23 @@ void ColorMonster::init(uint8_t bm, int count, const ColorRule *r)
                 int j = i % 8;
                 if (((i / 96) % 2 == 1) && ((j == 0) || (j == 3)) || (((i / 96) % 2 == 0) && ((j == 4) || (j == 7))))
                 {
-                 img[i * 2] = r[k].color[1][0];
-                 img[i * 2 + 1] = r[k].color[1][1];
+                 img[i] = r[k].color[1];
                 }
                 else
                 {
-                 img[i * 2] = r[k].color[0][0];
-                 img[i * 2 + 1] = r[k].color[0][1];
+                 img[i] = r[k].color[0];
                 }
               }
               break;
             default:
-              img[i * 2] = r[k].color[0][0];
-              img[i * 2 + 1] = r[k].color[0][1];
+              img[i] = r[k].color[0];
               break;
           }
         }
       }
       if (!processed)
       {
-        img[i * 2] = 255;
-        img[i * 2 + 1] = 255;
+        img[i] = 255;
       }
     }
   }
@@ -239,8 +229,7 @@ void ColorMonster::initRandom()
         for (int j = 0; j < 2; j++)
         {
           int c = random(0, 16);
-          rules[ruleCount].color[j][0] = colorList[c][0];
-          rules[ruleCount].color[j][1] = colorList[c][1];
+          rules[ruleCount].color[j] = c + 1;
         }
         ruleCount++;
         if (ruleCount == 20)
@@ -277,14 +266,14 @@ void ColorMonster::calculateColor()
     const unsigned char *baseImg = monsterType[baseMonster].img;
     uint8_t endColor(0);
     int colors[100][2];
-    for (int l = 0; l < 96*64; l++)
+    for (int l = 0; l < 48*64; l++)
     {
       if (baseImg[l] == region)
       {
         bool found = false;
         for (int k = 0; k < endColor; k++)
         {
-          if (colors[k][0] == ((img[l * 2 + 1] << 8) + img[l * 2]))
+          if (colors[k][0] == img[l])
           {
             colors[k][1]++;
             found = true;
@@ -293,7 +282,7 @@ void ColorMonster::calculateColor()
         }
         if ((!found) && (endColor < 100))
         {
-          colors[endColor][0] = (img[l * 2 + 1] << 8) + img[l * 2];
+          colors[endColor][0] = img[l];
           colors[endColor][1] = 1;
           endColor++;
         }
@@ -313,12 +302,37 @@ void ColorMonster::draw(int line, uint8_t *lineBuffer, bool reverse)
 {
   if (!reverse)
   {
-    memcpy(lineBuffer, img + (line * 48 * 2), 48 * 2);
+    for (int i = 0; i < 48; i++)
+    {
+      int indx = (line * 48) + i;
+      if (img[indx] == 255)
+      {
+        lineBuffer[i * 2] = 255;
+        lineBuffer[i * 2 + 1] = 255;
+      }
+      else
+      {
+        lineBuffer[i * 2] = colorList[img[indx]][0];
+        lineBuffer[i * 2 + 1] = colorList[img[indx]][1];
+      }
+    }
   }
   else
   {
     for (int i = 0; i < 48; i++)
-      memcpy(lineBuffer + (i * 2), img + (((line * 48) + (47 - i)) * 2), 2);
+    {
+      int indx = ((line + 1) * 48) - i - 1;
+      if (img[indx] == 255)
+      {
+        lineBuffer[i * 2] = 255;
+        lineBuffer[i * 2 + 1] = 255;
+      }
+      else
+      {
+        lineBuffer[i * 2] = colorList[img[indx]][0];
+        lineBuffer[i * 2 + 1] = colorList[img[indx]][1];
+      }
+    }
   }
 }
 
@@ -327,10 +341,21 @@ void ColorMonster::drawZoom(int line, uint8_t *lineBuffer, uint8_t zoomx, uint8_
   int curLine = zoomy + line / 2;
   for (int i = 0; i < 24; ++i)
   {
-    lineBuffer[i * 2 * 2] = img[curLine * 48 * 2 + (zoomx + i) * 2];
-    lineBuffer[i * 2 * 2 + 1] = img[curLine * 48 * 2 + (zoomx + i) * 2 + 1];
-    lineBuffer[i * 2 * 2 + 2] = img[curLine * 48 * 2 + (zoomx + i) * 2];
-    lineBuffer[i * 2 * 2 + 3] = img[curLine * 48 * 2 + (zoomx + i) * 2 + 1];
+    int indx = (curLine * 48) + zoomx + i;
+    if (img[indx] == 255)
+    {
+      lineBuffer[i * 2 * 2] = 255;
+      lineBuffer[i * 2 * 2 + 1] = 255;
+      lineBuffer[i * 2 * 2 + 2] = 255;
+      lineBuffer[i * 2 * 2 + 3] = 255;
+    }
+    else
+    {
+      lineBuffer[i * 2 * 2] = colorList[img[indx]][0];
+      lineBuffer[i * 2 * 2 + 1] = colorList[img[indx]][1];
+      lineBuffer[i * 2 * 2 + 2] = colorList[img[indx]][0];
+      lineBuffer[i * 2 * 2 + 3] = colorList[img[indx]][1];
+    }
   }
 }
 
@@ -364,7 +389,7 @@ bool Trainer::load()
       y = y + (tmp << 8);
       dataFile.read(&dir, 1);
       dataFile.read(secrets, MAX_SECRETS);
-      dataFile.read(active->img, 64*48*2);
+      dataFile.read(active->img, 64*48);
       dataFile.sync();
       dataFile.close();
       return true;
@@ -396,7 +421,7 @@ void Trainer::save()
     dataFile.write(&tmp, 1);
     dataFile.write(&dir, 1);
     dataFile.write(secrets, MAX_SECRETS);
-    dataFile.write(active->img, 64*48*2);
+    dataFile.write(active->img, 64*48);
     dataFile.sync();
     dataFile.close();
   }
@@ -476,8 +501,8 @@ const uint8_t startTownMap[] = {
   0, 0,18,17,17,17,19, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
 };
 const ColorRule jessCateyeRule[] = {
- { 0, 0x49, { { 0x08, 0x54 }, { 0, 0 } } },
- { PATTERN_LINES, 0x03, { { 0x05, 0xe0 }, { 0x13, 0x02 } } }
+ { 0, 0x49, { 1, 0 } },
+ { PATTERN_LINES, 0x03, { 11, 12 } }
 };
 const NPCMonster jessCateye[] = {
   {0, 2, jessCateyeRule}
@@ -499,7 +524,7 @@ const Area *areaList[] = {
 class Painter
 {
   public:
-    Painter() : px(0), py(0), tool(0), color1(255), color2(255) {}
+    Painter() : px(0), py(0), tool(0), color1(255) {}
     void update();
     void draw();
 
@@ -510,7 +535,6 @@ class Painter
     uint8_t zoomy;
     uint8_t tool;
     uint8_t color1;
-    uint8_t color2;
 };
 
 void Painter::update()
@@ -580,8 +604,7 @@ void Painter::update()
       {
         if (tool == TOOL_DRAW)
         {
-          active->img[dy * 48 * 2 + dx * 2] = color1;
-          active->img[dy * 48 * 2 + dx * 2 + 1] = color2;
+          active->img[dy * 48 + dx] = color1;
         }
         else if (tool == TOOL_FLOOD)
         {
@@ -591,8 +614,7 @@ void Painter::update()
             {
               if (baseImg[i] == fillSpot)
               {
-                active->img[i * 2] = color1;
-                active->img[i * 2 + 1] = color2;
+                active->img[i] = color1;
               }
             }
           }
@@ -608,8 +630,7 @@ void Painter::update()
           int colorIdx = ((py - 20) / 11) * 4 + ((px - 50) / 11);
           if (colorIdx < 16)
           {
-            color1 = colorList[colorIdx][0];
-            color2 = colorList[colorIdx][1];
+            color1 = colorIdx + 1;
             buttonCoolDown = BUTTON_COOLDOWN;
           }
         }
@@ -683,8 +704,8 @@ void Painter::draw()
         {
           for (int x = 0; x < 9; ++x)
           {
-            lineBuffer[(i * 11 + x + 51) * 2] = colorList[colorIdx + i][0];
-            lineBuffer[(i * 11 + x + 51) * 2 + 1] = colorList[colorIdx + i][1];
+            lineBuffer[(i * 11 + x + 51) * 2] = colorList[colorIdx + i + 1][0];
+            lineBuffer[(i * 11 + x + 51) * 2 + 1] = colorList[colorIdx + i + 1][1];
           }
           memset(lineBuffer + (i * 11 + 60) * 2, 0, 2 * 2);
         }
@@ -701,16 +722,16 @@ void Painter::draw()
       {
         for (int i = (48 + 2) * 2; i < (48 + 20) * 2; i += 2)
         {
-          lineBuffer[i] = color1;
-          lineBuffer[i + 1] = color2;
+          lineBuffer[i] = colorList[color1][0];
+          lineBuffer[i + 1] = colorList[color1][1];
         }
       }
       else if (tool == TOOL_FLOOD)
       {
         for (int i = (48 + 22) * 2; i < (48 + 40) * 2; i += 2)
         {
-          lineBuffer[i] = color1;
-          lineBuffer[i + 1] = color2;
+          lineBuffer[i] = colorList[color1][0];
+          lineBuffer[i + 1] = colorList[color1][1];
         }
       }
     }
@@ -718,17 +739,17 @@ void Painter::draw()
     {
       if (tool == TOOL_DRAW)
       {
-        lineBuffer[(48 + 2) * 2] = color1;
-        lineBuffer[(48 + 2) * 2 + 1] = color2;
-        lineBuffer[(48 + 19) * 2] = color1;
-        lineBuffer[(48 + 19) * 2 + 1] = color2;
+        lineBuffer[(48 + 2) * 2] = colorList[color1][0];
+        lineBuffer[(48 + 2) * 2 + 1] = colorList[color1][1];
+        lineBuffer[(48 + 19) * 2] = colorList[color1][0];
+        lineBuffer[(48 + 19) * 2 + 1] = colorList[color1][1];
       }
       else if (tool == TOOL_FLOOD)
       {
-        lineBuffer[(48 + 22) * 2] = color1;
-        lineBuffer[(48 + 22) * 2 + 1] = color2;
-        lineBuffer[(48 + 39) * 2] = color1;
-        lineBuffer[(48 + 39) * 2 + 1] = color2;
+        lineBuffer[(48 + 22) * 2] = colorList[color1][0];
+        lineBuffer[(48 + 22) * 2 + 1] = colorList[color1][1];
+        lineBuffer[(48 + 39) * 2] = colorList[color1][0];
+        lineBuffer[(48 + 39) * 2 + 1] = colorList[color1][1];
       }
     }
     if ((lines >= py) && (lines < py + 8))

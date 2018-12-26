@@ -15,6 +15,7 @@ class Battle
     struct {
       int base : 3;
       int subaction : 5;
+      unsigned char c;
     } action[2];
     uint8_t choiceEnd;
     char *choiceList[10];
