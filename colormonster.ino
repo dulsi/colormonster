@@ -73,24 +73,46 @@ const uint8_t portraitLoc[] = { 1, 21, 24, 44};
 const char noItems[] = "You have no items.";
 const char noSwap[] = "You have no more monsters.";
 
-const uint8_t colorList[17][2] = {
+#define NUM_COLORS 17
+
+const uint8_t colorList[NUM_COLORS][2] = {
   {0x00,0x00},
   {0x08,0x54},
   {0x00,0x1f},
   {0x58,0x81},
   {0xf8,0xe0},
-  {0xf8,0x77},
-  {0x80,0x4c},
-  {0x7b,0xcf},
-  {0xff,0xff},
-  {0x27,0xff},
-  {0x04,0xb2},
   {0x05,0xe0},
   {0x13,0x02},
+  {0xf8,0x77},
+  {0x80,0x4c},
+  {0x27,0xff},
+  {0x04,0xb2},
   {0x0a,0x9f},
   {0x0c,0x5f},
   {0x52,0xe1},
-  {0xe7,0xe7}
+  {0xe7,0xe7},
+  {0x7b,0xcf},
+  {0xff,0xff}
+};
+
+const uint8_t colorStrikeChart[NUM_COLORS][NUM_COLORS] = {
+  {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
+  {0, 0, 0, 0, 0, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
+  {0, 0, 0, 0, 0, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
+  {0, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
+  {0, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
+  {0, 0, 0, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
+  {0, 0, 0, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
+  {0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 0, 0, 0, 0, 0, 0},
+  {0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 0, 0, 0, 0, 0, 0},
+  {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 0, 0, 0, 0},
+  {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 0, 0, 0, 0},
+  {0, 0, 0, 0, 0, 0, 0, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0},
+  {0, 0, 0, 0, 0, 0, 0, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0},
+  {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
+  {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
+  {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
+  {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}
 };
 
 const uint8_t tilesetCollision[] = {
@@ -103,6 +125,20 @@ const uint8_t tilesetCollision[] = {
 };
 
 void restorePreviousState();
+
+void ColorMonsterPower::load()
+{
+  dataFile.read(&power, 1);
+  dataFile.read(&color, 1);
+  dataFile.read(&strength, 1);
+}
+
+void ColorMonsterPower::save()
+{
+  dataFile.write(&power, 1);
+  dataFile.write(&color, 1);
+  dataFile.write(&strength, 1);
+}
 
 void ColorMonster::init(uint8_t bm)
 {
@@ -359,6 +395,44 @@ void ColorMonster::drawZoom(int line, uint8_t *lineBuffer, uint8_t zoomx, uint8_
   }
 }
 
+void ColorMonster::load()
+{
+  uint8_t tmp;
+  dataFile.read(&baseMonster, 1);
+  dataFile.read(img, 64*48);
+  dataFile.read(&tmp, 1);
+  hp = tmp;
+  dataFile.read(&tmp, 1);
+  hp = hp + (tmp << 8);
+  dataFile.read(&tmp, 1);
+  maxHp = tmp;
+  dataFile.read(&tmp, 1);
+  maxHp = maxHp + (tmp << 8);
+  for (int i = 0; i < 5; i++)
+  {
+    power[i].load();
+  }
+}
+
+void ColorMonster::save()
+{
+  uint8_t tmp;
+  dataFile.write(&baseMonster, 1);
+  dataFile.write(img, 64*48);
+  tmp = hp;
+  dataFile.write(&tmp, 1);
+  tmp = hp >> 8;
+  dataFile.write(&tmp, 1);
+  tmp = maxHp;
+  dataFile.write(&tmp, 1);
+  tmp = maxHp >> 8;
+  dataFile.write(&tmp, 1);
+  for (int i = 0; i < 5; i++)
+  {
+    power[i].save();
+  }
+}
+
 ColorMonster party[MONSTER_PARTYSIZE];
 ColorMonster *active = &party[0];
 ColorMonster opponent[MONSTER_PARTYSIZE];
@@ -390,6 +464,10 @@ bool Trainer::load()
       dataFile.read(&dir, 1);
       dataFile.read(secrets, MAX_SECRETS);
       dataFile.read(active->img, 64*48);
+      for (int i = 0; i < MONSTER_PARTYSIZE; i++)
+      {
+        party[i].load();
+      }
       dataFile.sync();
       dataFile.close();
       return true;
@@ -422,6 +500,10 @@ void Trainer::save()
     dataFile.write(&dir, 1);
     dataFile.write(secrets, MAX_SECRETS);
     dataFile.write(active->img, 64*48);
+    for (int i = 0; i < MONSTER_PARTYSIZE; i++)
+    {
+      party[i].save();
+    }
     dataFile.sync();
     dataFile.close();
   }
@@ -502,7 +584,7 @@ const uint8_t startTownMap[] = {
 };
 const ColorRule jessCateyeRule[] = {
  { 0, 0x49, { 1, 0 } },
- { PATTERN_LINES, 0x03, { 11, 12 } }
+ { PATTERN_LINES, 0x03, { 5, 6 } }
 };
 const NPCMonster jessCateye[] = {
   {0, 2, jessCateyeRule}
@@ -585,7 +667,6 @@ void Painter::update()
     if ((btn & TAButton1) && (px < 48))
     {
       buttonCoolDown = BUTTON_COOLDOWN;
-      active->saved = false;
       uint8_t dx;
       uint8_t dy;
       if (STATE_PAINT == state)
@@ -1826,6 +1907,7 @@ void Battle::init()
   action[0].base = 0;
   action[0].subaction = 0;
   message = false;
+  colorStrike = false;
   initiative[0] = false;
   initiative[1] = false;
 }
@@ -1849,6 +1931,7 @@ void Battle::update()
           if ((action[0].base == BASEOPTION_ATTACK) && (action[0].subaction == 0))
           {
             action[0].subaction = c + 1;
+            action[0].color = active->power[c].color;
             message = false;
             initiative[0] = true;
             initiative[1] = true;
@@ -1996,6 +2079,17 @@ void Battle::draw()
     {
       bottomMessage.draw(lines, lineBuffer);
     }
+    if ((colorStrike) && (lines < 8))
+    {
+      for (int i = 0; i < 66; i++)
+      {
+        if ((_image_colorstrike_data[(lines * 66 + i) * 2] != 0xff) || (_image_colorstrike_data[(lines * 66 + i) * 2 + 1] != 0xff))
+        {
+         lineBuffer[30 + i * 2] = _image_colorstrike_data[(lines * 66 + i) * 2];
+         lineBuffer[30 + i * 2 + 1] = _image_colorstrike_data[(lines * 66 + i) * 2 + 1];
+        }
+      }
+    }
     display.writeBuffer(lineBuffer,96 * 2);
   }
   display.endTransfer();
@@ -2006,25 +2100,33 @@ void Battle::chooseAction()
   // Always base attack. AI will be added later.
   action[1].base = BASEOPTION_ATTACK;
   action[1].subaction = 1;
+  action[1].color = activeOpponent->power[0].color;
 }
 
 void Battle::runAction(int a)
 {
   ColorMonster *mon[2];
   message = true;
+  colorStrike = false;
   if (action[a].base == BASEOPTION_ATTACK)
   {
     if (a == 0)
     {
       mon[0] = active;
       mon[1] = activeOpponent;
+      if (colorStrikeChart[action[0].color][action[1].color])
+       colorStrike = true;
     }
     else
     {
       mon[1] = active;
       mon[0] = activeOpponent;
+      if (colorStrikeChart[action[1].color][action[0].color])
+       colorStrike = true;
     }
     int damage = random(1, mon[0]->power[action[a].subaction - 1].strength + 1);
+    if (colorStrike)
+     damage += 2 /* * level*/;
     sprintf(choiceString, "%s hits for %d damage.", monsterType[mon[0]->baseMonster].power[mon[0]->power[action[a].subaction - 1].power].name, damage);
     if (mon[1]->hp <= damage)
     {

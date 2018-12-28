@@ -15,12 +15,13 @@ class Battle
     struct {
       int base : 3;
       int subaction : 5;
-      unsigned char c;
+      unsigned char color;
     } action[2];
     uint8_t choiceEnd;
     char *choiceList[10];
     char choiceString[500];
     bool message;
+    bool colorStrike;
     bool initiative[2];
     uint8_t lastBattle;
     static const char *baseOption[4];
